@@ -1,0 +1,661 @@
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
+#include <math.h>
+#include "Shader.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <ctime>
+// #include "loadTexture.h"
+#include "Model_robust.h"
+
+const int WIDTH = 1280;
+const int HEIGHT = 720;
+bool shadersActive = true;
+
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+
+// Delta time
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+// Mouse parameters
+const float SENSITIVITY = 0.025f;
+float lastX = WIDTH / 2;
+float lastY = HEIGHT / 2;
+float yaw = -90.0f;
+float pitch = 0.0f;
+bool firstMouse = true;
+float zoom = 45.0f;
+
+unsigned int loadCubemap(std::vector<std::string> faces);
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+void mouse_callback(GLFWwindow* window, double xPos, double yPos)
+{
+    //if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+    //{
+        if (firstMouse)
+        {
+            lastX = xPos;
+            lastY = yPos;
+            firstMouse = false;
+        }
+
+        float xOffset = xPos - lastX;
+        float yOffset = lastY - yPos; // y-axis is reversed
+        lastX = xPos;
+        lastY = yPos;
+
+        yaw += xOffset * SENSITIVITY;
+        pitch += yOffset * SENSITIVITY;
+
+        if (pitch > 89.0f) pitch = 89.0f;
+        if (pitch < -89.0f) pitch = -89.0f;
+
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.y = sin(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        cameraFront = glm::normalize(direction);
+		// glfwSetCursorPos(window, WIDTH/2, HEIGHT/2);
+        // lastX = WIDTH/2;
+        // lastY = HEIGHT/2;
+    //}
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    zoom -= 2.0f * (float) yoffset;
+    if (zoom < 1.0f) zoom = 1.0f;
+    if (zoom > 45.0f) zoom = 45.0f;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_L && action == GLFW_PRESS)
+    {
+        shadersActive = !shadersActive;
+    }
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+    {
+        std::cout << "Camera position: (" << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << ")\n";
+    }
+}
+
+void processInput(GLFWwindow* window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    const float cameraSpeed = 10.0f * deltaTime;
+	    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) cameraPos += cameraSpeed * cameraFront;           if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) cameraPos -= cameraSpeed * cameraFront;           if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) cameraPos += cameraSpeed * glm::normalize(glm::cross(cameraFront, cameraUp));                                                                         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) cameraPos -= cameraSpeed * glm::normalize(glm::cross(cameraFront, cameraUp));                                                                         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) cameraPos += cameraSpeed * cameraUp;
+		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) cameraPos -= cameraSpeed * cameraUp;
+}
+
+// renderQuad() renders a 1x1 XY quad in NDC
+// -----------------------------------------
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+            // positions        // texture Coords
+            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
+int main()
+{
+    // Initialize GLFW
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    // Create a window
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "GLFW", NULL, NULL);
+    if (window == NULL)
+    {
+        std::cout << "Failed to create GLFW window\n";
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+
+    // Initialize GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD\n";
+        return -1;
+    }
+
+    // Define viewport
+    glViewport(0, 0, WIDTH, HEIGHT);
+
+	// Handle resizing
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // Capture the cursor
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
+
+	// Enable depth testing and blending
+    glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+	
+	// Define shaders
+	Shader phongShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs.glsl");
+    Shader constantShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_constant.glsl");
+	Shader lightSourceShaders("shaders/vertex/vs_lightSource.glsl", "shaders/fragment/fs_lightSource.glsl");
+    Shader skyboxShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_skybox.glsl");
+    Shader shadowShaders("shaders/vertex/vs_shadows.glsl", "shaders/fragment/fs_shadows.glsl");
+    Shader debugShaders("shaders/vertex/vs_debug.glsl", "shaders/fragment/fs_debug.glsl");
+
+	// tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
+    //stbi_set_flip_vertically_on_load(true);
+
+	// Load models
+	//Model backpack("goblet/source/OPM0057.fbx");
+	//Model backpack("goldmoney-bag/source/Pocket_low3.fbx");
+	//Model backpack("backpack/backpack.obj");
+	Model object1("assets/models/modern-bedroom/source/Bedroom.fbx");
+    // Model object2("assets/models/wall-lamp/source/WallLamp.fbx");
+
+    std::vector<std::string> faces
+    {
+        "assets/skybox/right.jpg",
+        "assets/skybox/left.jpg",
+        "assets/skybox/top.jpg",
+        "assets/skybox/bottom.jpg",
+        "assets/skybox/front.jpg",
+        "assets/skybox/back.jpg"
+    };
+    unsigned int cubemapTexture = loadCubemap(faces);
+
+    float skyboxVertices[] = {       
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
+    };
+    unsigned int skyboxVBO, lightVAO;
+	glGenBuffers(1, &skyboxVBO);
+	glGenVertexArrays(1, &lightVAO);
+	glBindVertexArray(lightVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+	glEnableVertexAttribArray(0);
+
+    unsigned int lineVAO, lineVBO;
+    glGenVertexArrays(1, &lineVAO);
+    glGenBuffers(1, &lineVBO);
+
+    glBindVertexArray(lineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+    // We allocate space for 2 vertices (start and end points), 3 floats each.
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), NULL, GL_DYNAMIC_DRAW); 
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+
+	// Light cube vertices
+	float lightVertices[] = {
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+
+        -0.5f, -0.5f,  0.5f,
+        0.5f, -0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+
+        0.5f,  0.5f,  0.5f,
+        0.5f,  0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+
+        -0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f, -0.5f,
+        0.5f, -0.5f,  0.5f,
+        0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
+
+        -0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f, -0.5f,
+        0.5f,  0.5f,  0.5f,
+        0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+	};
+	unsigned int lightVBO, skyboxVAO;
+	glGenBuffers(1, &lightVBO);
+	glGenVertexArrays(1, &skyboxVAO);
+	glBindVertexArray(skyboxVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, lightVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(lightVertices), lightVertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+	glEnableVertexAttribArray(0);
+
+    // Generate shadow maps
+    unsigned int depthMapFBO;
+    glGenFramebuffers(1, &depthMapFBO);
+
+    const int SHADOW_WIDTH = 1024;
+    const int SHADOW_HEIGHT = 1024;
+    
+    unsigned int depthMap;
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // debugShaders.use();
+    // debugShaders.setInt("depthMap", 0);
+
+
+	while (!glfwWindowShouldClose(window))
+	{
+		// Input
+		processInput(window);
+
+        // Clear background
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Define delta time
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        // Define light(s)
+        glm::vec3 dirLightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+        glm::vec3 dirLightPos = glm::vec3(2*13.0f, 2*17.0f, 2*(-30.0f));
+        glm::vec3 pointLightPositions[] = {
+            glm::vec3(-8.0f, 4.2f, -14.0f),
+            glm::vec3(6.9f, 4.2f, -14.0f),
+			glm::vec3(4.0f-0.7, 4.5f, -3.0f+0.25),
+			glm::vec3(4.0f-0.7, 4.5f, 1.5f+0.25)
+        };
+
+		glm::vec3 pointLightColor1 = glm::vec3(240/255.0f, 130/255.0f, 50/255.0f);
+		glm::vec3 pointLightColor2 = glm::vec3(240/255.0f, 130/255.0f, 50/255.0f);
+		glm::vec3 pointLightColor3 = glm::vec3(0/255.0f, 0/255.0f, 255/255.0f);
+		glm::vec3 pointLightColor4 = glm::vec3(255/255.0f, 255/255.0f, 0/255.0f);
+
+		phongShaders.use();
+		phongShaders.setFloat("shininess", 140.0f);
+		phongShaders.setVec3("dirLight.color", dirLightColor);
+        glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, 0.0f) - dirLightPos;
+        phongShaders.setVec3("dirLight.direction", lightDirection);
+        phongShaders.setVec3("dirLight.ambient", 0.2f, 0.2f, 0.2f);
+        phongShaders.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
+        phongShaders.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
+
+        phongShaders.setVec3("pointLights[0].color", pointLightColor1);
+        phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
+        phongShaders.setVec3("pointLights[0].ambient", 0.3f, 0.3f, 0.3f);
+        phongShaders.setVec3("pointLights[0].diffuse", 0.5f, 0.5f, 0.5f);
+        phongShaders.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+        phongShaders.setFloat("pointLights[0].constant", 1.0f);
+        phongShaders.setFloat("pointLights[0].linear", 0.07f);
+        phongShaders.setFloat("pointLights[0].quadratic", 0.017f);
+
+        phongShaders.setVec3("pointLights[1].color", pointLightColor2);
+        phongShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
+        phongShaders.setVec3("pointLights[1].ambient", 0.3f, 0.3f, 0.3f);
+        phongShaders.setVec3("pointLights[1].diffuse", 0.5f, 0.5f, 0.5f);
+        phongShaders.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
+        phongShaders.setFloat("pointLights[1].constant", 1.0f);
+        phongShaders.setFloat("pointLights[1].linear", 0.07f);
+        phongShaders.setFloat("pointLights[1].quadratic", 0.017f);
+
+		// shaders.setVec3("pointLights[2].color", pointLightColor3);
+        // shaders.setVec3("pointLights[2].position", pointLightPositions[2]);
+        // shaders.setVec3("pointLights[2].ambient", 0.3f, 0.3f, 0.3f);
+        // shaders.setVec3("pointLights[2].diffuse", 0.5f, 0.5f, 0.5f);
+        // shaders.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
+        // shaders.setFloat("pointLights[2].constant", 1.0f);
+        // shaders.setFloat("pointLights[2].linear", 0.07f);
+        // shaders.setFloat("pointLights[2].quadratic", 0.017f);
+
+        // shaders.setVec3("pointLights[3].color", pointLightColor4);
+        // shaders.setVec3("pointLights[3].position", pointLightPositions[3]);
+        // shaders.setVec3("pointLights[3].ambient", 0.3f, 0.3f, 0.3f);
+        // shaders.setVec3("pointLights[3].diffuse", 0.5f, 0.5f, 0.5f);
+        // shaders.setVec3("pointLights[3].specular", 1.0f, 1.0f, 1.0f);
+        // shaders.setFloat("pointLights[3].constant", 1.0f);
+        // shaders.setFloat("pointLights[3].linear", 0.07f);
+        // shaders.setFloat("pointLights[3].quadratic", 0.017f);
+
+        /////////////////////////////////////////////////////////
+        // 1. pass: render shadow map from light's perspective //
+        // NOTE: currently only for directional light          //
+        /////////////////////////////////////////////////////////
+        if (shadersActive) {
+            float near_plane = 1.0f;
+            float far_plane = 100.0f;
+
+            glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane);
+            glm::mat4 lightView = glm::lookAt(dirLightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+            glCullFace(GL_FRONT);
+
+            shadowShaders.use();
+            shadowShaders.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+
+            glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+            glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+            glClear(GL_DEPTH_BUFFER_BIT);
+            glActiveTexture(GL_TEXTURE0);
+
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+            // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            shadowShaders.setMat4("model", model);
+            object1.Draw(shadowShaders);
+
+            // model = glm::mat4(1.0f);
+            // model = glm::translate(model, glm::vec3(-0.5f, -1.0f, -4.0f));
+            // model = glm::scale(model, glm::vec3(0.02f, 0.02f, 0.02f));
+            // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            // shadowShaders.setMat4("model", model);
+            // object2.Draw(shadowShaders);
+
+            glCullFace(GL_BACK);
+
+            // Render debug quad
+
+            // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            // glViewport(0, 0, WIDTH, HEIGHT);
+            // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // debugShaders.use();
+            // debugShaders.setInt("depthMap", 0);
+            // glActiveTexture(GL_TEXTURE0);
+            // glBindTexture(GL_TEXTURE_2D, depthMap);
+            // renderQuad();
+
+            // Render scene with loaded model(s)
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, WIDTH, HEIGHT);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            phongShaders.use();
+            phongShaders.setInt("shadowMap", 9); // 1 -> 9, Gemini suggestion
+            phongShaders.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+            glActiveTexture(GL_TEXTURE9);
+            glBindTexture(GL_TEXTURE_2D, depthMap);
+        }
+
+        //////////////////////////////////////////////////////////
+        // 2. pass: render scene using the generated shadow map //
+        //////////////////////////////////////////////////////////
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 projection = glm::mat4(1.0f);
+        projection = glm::perspective(glm::radians(zoom), (float) (WIDTH / HEIGHT), 0.1f, 100.0f);
+
+        if (shadersActive) {
+            phongShaders.setMat4("projection", projection);
+            phongShaders.setMat4("view", view);
+
+            phongShaders.setVec3("viewPos", cameraPos);
+        }
+        else {
+            constantShaders.use();
+            constantShaders.setMat4("projection", projection);
+            constantShaders.setMat4("view", view);
+            constantShaders.setVec3("viewPos", cameraPos);
+        }
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+        // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        if (shadersActive) {
+            phongShaders.setMat4("model", model);
+            phongShaders.setFloat("transparency", 1.0f);
+            object1.Draw(phongShaders);
+        }
+        else {
+            constantShaders.setMat4("model", model);
+            constantShaders.setFloat("transparency", 1.0f);
+            object1.Draw(constantShaders);
+        }
+
+		// model = glm::mat4(1.0f);
+		// model = glm::translate(model, glm::vec3(-0.5f, -1.0f, -4.0f));
+        // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		// model = glm::scale(model, glm::vec3(0.02f, 0.02f, 0.02f));
+		// shaders.setMat4("model", model);
+		// shaders.setFloat("transparency", 1.0f);
+		// object2.Draw(shaders);
+
+        ////////////////////////////////////////////
+		// Render light sources for visualization //
+        ////////////////////////////////////////////
+		lightSourceShaders.use();
+		lightSourceShaders.setMat4("projection", projection);
+		lightSourceShaders.setMat4("view", view);
+
+        // Point lights
+		// lightSourceShaders.setVec3("lightColor", pointLightColor1);
+		// model = glm::mat4(1.0f);
+		// model = glm::translate(model, pointLightPositions[0]);
+		// model = glm::scale(model, glm::vec3(0.05f));
+		// lightSourceShaders.setMat4("model", model);
+		// glBindVertexArray(lightVAO);
+		// glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		// lightSourceShaders.setVec3("lightColor", pointLightColor2);
+		// model = glm::mat4(1.0f);
+		// model = glm::translate(model, pointLightPositions[1]);
+		// model = glm::scale(model, glm::vec3(0.05f));
+        // // model = glm::rotate(model, glm::radians(35.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		// lightSourceShaders.setMat4("model", model);
+		// glBindVertexArray(lightVAO);
+		// glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // lightSourceShaders.setVec3("lightColor", pointLightColor3);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, pointLightPositions[2]);
+        // model = glm::scale(model, glm::vec3(0.2f));
+        // lightSourceShaders.setMat4("model", model);
+        // glBindVertexArray(lightVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // lightSourceShaders.setVec3("lightColor", pointLightColor4);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, pointLightPositions[3]);
+        // model = glm::scale(model, glm::vec3(0.2f));
+        // lightSourceShaders.setMat4("model", model);
+        // glBindVertexArray(lightVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Directional light
+        lightSourceShaders.setVec3("lightColor", dirLightColor);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, dirLightPos); 
+        model = glm::scale(model, glm::vec3(0.2f)); // Made it a bit bigger than the point lights
+        lightSourceShaders.setMat4("model", model);
+        glBindVertexArray(lightVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Debug line
+        // 1. Calculate the line's start and end points in world space
+        glm::vec3 lineStart = dirLightPos;
+        // Multiply by a scalar (e.g., 5.0f) to make the line long enough to see clearly
+        glm::vec3 lineEnd = dirLightPos + glm::normalize(lightDirection) * 5.0f; 
+
+        float lineVertices[] = {
+            lineStart.x, lineStart.y, lineStart.z,
+            lineEnd.x, lineEnd.y, lineEnd.z
+        };
+
+        // 2. Update the VBO with the new line coordinates
+        glBindVertexArray(lineVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(lineVertices), lineVertices);
+
+        // 3. Render the line using your existing light shader
+        lightSourceShaders.use();
+        lightSourceShaders.setMat4("projection", projection);
+        lightSourceShaders.setMat4("view", view);
+        // We use an identity matrix for the model because our lineVertices are already in world space!
+        lightSourceShaders.setMat4("model", glm::mat4(1.0f)); 
+        lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f)); // Yellow line
+
+        glDrawArrays(GL_LINES, 0, 2);
+        glBindVertexArray(0);
+
+        // Render skybox
+        // glDepthMask(GL_FALSE);
+        // skyboxShaders.use();
+		// skyboxShaders.setMat4("projection", projection);
+        // view = glm::mat4(glm::mat3(view));  
+		// skyboxShaders.setMat4("view", view);
+        // glBindVertexArray(skyboxVAO);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glDepthMask(GL_TRUE);
+        // glDepthFunc(GL_LEQUAL);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
+    return 0;
+}
+
+unsigned int loadCubemap(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+
+    for (int i = 0; i < faces.size(); i++)
+    {
+        unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "ERROR: Cubemap failed to load\n";
+            stbi_image_free(data);
+        }
+    }
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+        return textureID;
+}
+
