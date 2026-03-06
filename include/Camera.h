@@ -5,6 +5,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 class Camera {
+
+private:
+    const float SENSITIVITY = 0.05f;
+    const float SPEED = 15.0f;
+    
 public:
     enum Direction {
         FORWARD,
@@ -65,8 +70,4 @@ public:
         if (this->fov < 1.0f) {this->fov = 1.0f;}
         if (this->fov > 45.0f) {this->fov = 45.0f;}
     }
-    
-    private:
-    const float SENSITIVITY = 0.05f;
-    const float SPEED = 15.0f;
 };

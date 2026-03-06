@@ -14,18 +14,16 @@
 const int WIDTH = 1280;
 const int HEIGHT = 720;
 
+float lastX = WIDTH / 2;
+float lastY = HEIGHT / 2;
+
 bool shadersActive = true;
-Camera cam = Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+bool firstMouse = true;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-float lastX = WIDTH / 2;
-float lastY = HEIGHT / 2;
-
-bool firstMouse = true;
-
-unsigned int loadCubemap(std::vector<std::string> faces);
+Camera cam = Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -80,44 +78,14 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {cam.processKeyboard(Camera::DOWN, deltaTime);}
 }
 
-// renderQuad() renders a 1x1 XY quad in NDC
-// -----------------------------------------
-unsigned int quadVAO = 0;
-unsigned int quadVBO;
-void renderQuad()
-{
-    if (quadVAO == 0)
-    {
-        float quadVertices[] = {
-            // positions        // texture Coords
-            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-        };
-        // setup plane VAO
-        glGenVertexArrays(1, &quadVAO);
-        glGenBuffers(1, &quadVBO);
-        glBindVertexArray(quadVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    }
-    glBindVertexArray(quadVAO);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glBindVertexArray(0);
-}
-
 int main()
 {
     // Initialize GLFW
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    // glfwWindowHint(GLFW_DEPTH_BITS, 32);
 
     // Create a window
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "GLFW", NULL, NULL);
@@ -259,7 +227,9 @@ int main()
     // debugShaders.use();
     // debugShaders.setInt("depthMap", 0);
 
-
+    //////////////////////
+    // MAIN RENDER LOOP //
+    //////////////////////
 	while (!glfwWindowShouldClose(window))
 	{
 		// Input
@@ -280,13 +250,13 @@ int main()
         glm::vec3 pointLightPositions[] = {
             glm::vec3(-8.0f, 4.2f, -14.0f),
             glm::vec3(6.9f, 4.2f, -14.0f),
-			glm::vec3(4.0f-0.7, 4.5f, -3.0f+0.25),
+			glm::vec3(13.8f, 3.2f, 0.58f),
 			glm::vec3(4.0f-0.7, 4.5f, 1.5f+0.25)
         };
 
-		glm::vec3 pointLightColor1 = glm::vec3(240/255.0f, 130/255.0f, 50/255.0f);
-		glm::vec3 pointLightColor2 = glm::vec3(240/255.0f, 130/255.0f, 50/255.0f);
-		glm::vec3 pointLightColor3 = glm::vec3(0/255.0f, 0/255.0f, 255/255.0f);
+		glm::vec3 pointLightColor1 = glm::vec3(240/255.0f, 150/255.0f, 80/255.0f);
+		glm::vec3 pointLightColor2 = glm::vec3(240/255.0f, 150/255.0f, 80/255.0f);
+		glm::vec3 pointLightColor3 = glm::vec3(100/255.0f, 100/255.0f, 255/255.0f);
 		glm::vec3 pointLightColor4 = glm::vec3(255/255.0f, 255/255.0f, 0/255.0f);
 
 		phongShaders.use();
@@ -294,7 +264,7 @@ int main()
 		phongShaders.setVec3("dirLight.color", dirLightColor);
         glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, 0.0f) - dirLightPos;
         phongShaders.setVec3("dirLight.direction", lightDirection);
-        phongShaders.setVec3("dirLight.ambient", 0.2f, 0.2f, 0.2f);
+        phongShaders.setVec3("dirLight.ambient", 0.3f, 0.3f, 0.3f);
         phongShaders.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
         phongShaders.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
 
@@ -315,15 +285,16 @@ int main()
         phongShaders.setFloat("pointLights[1].constant", 1.0f);
         phongShaders.setFloat("pointLights[1].linear", 0.07f);
         phongShaders.setFloat("pointLights[1].quadratic", 0.017f);
-
-		// shaders.setVec3("pointLights[2].color", pointLightColor3);
-        // shaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-        // shaders.setVec3("pointLights[2].ambient", 0.3f, 0.3f, 0.3f);
-        // shaders.setVec3("pointLights[2].diffuse", 0.5f, 0.5f, 0.5f);
-        // shaders.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
-        // shaders.setFloat("pointLights[2].constant", 1.0f);
-        // shaders.setFloat("pointLights[2].linear", 0.07f);
-        // shaders.setFloat("pointLights[2].quadratic", 0.017f);
+        
+        // Laptop light
+		// phongShaders.setVec3("pointLights[2].color", pointLightColor3);
+        // phongShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
+        // phongShaders.setVec3("pointLights[2].ambient", 0.15f, 0.15f, 0.15f);
+        // phongShaders.setVec3("pointLights[2].diffuse", 0.3f, 0.3f, 0.3f);
+        // phongShaders.setVec3("pointLights[2].specular", 0.1f, 0.1f, 0.1f);
+        // phongShaders.setFloat("pointLights[2].constant", 1.0f);
+        // phongShaders.setFloat("pointLights[2].linear", 0.22f);
+        // phongShaders.setFloat("pointLights[2].quadratic", 0.20f);
 
         // shaders.setVec3("pointLights[3].color", pointLightColor4);
         // shaders.setVec3("pointLights[3].position", pointLightPositions[3]);
@@ -335,11 +306,11 @@ int main()
         // shaders.setFloat("pointLights[3].quadratic", 0.017f);
 
         /////////////////////////////////////////////////////////
-        // 1. pass: render shadow map from light's perspective //
+        // 1. PASS: RENDER SHADOW MAP FROM LIGHTS' PERSPECTIVE //
         // NOTE: currently only for directional light          //
         /////////////////////////////////////////////////////////
         if (shadersActive) {
-            float near_plane = 1.0f;
+            float near_plane = 10.0f;
             float far_plane = 100.0f;
 
             glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane);
@@ -397,7 +368,7 @@ int main()
         }
 
         //////////////////////////////////////////////////////////
-        // 2. pass: render scene using the generated shadow map //
+        // 2. PASS: RENDER SCENE USING THE GENERATED SHADOW MAP //
         //////////////////////////////////////////////////////////
         glm::mat4 view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.worldUp);
         glm::mat4 projection = glm::mat4(1.0f);
@@ -441,7 +412,7 @@ int main()
 		// object2.Draw(shaders);
 
         ////////////////////////////////////////////
-		// Render light sources for visualization //
+		// RENDER LIGHT SOURCES FOR VISUALIZATION //
         ////////////////////////////////////////////
 		lightSourceShaders.use();
 		lightSourceShaders.setMat4("projection", projection);
@@ -491,9 +462,7 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // Debug line
-        // 1. Calculate the line's start and end points in world space
         glm::vec3 lineStart = dirLightPos;
-        // Multiply by a scalar (e.g., 5.0f) to make the line long enough to see clearly
         glm::vec3 lineEnd = dirLightPos + glm::normalize(lightDirection) * 5.0f; 
 
         float lineVertices[] = {
@@ -501,16 +470,13 @@ int main()
             lineEnd.x, lineEnd.y, lineEnd.z
         };
 
-        // 2. Update the VBO with the new line coordinates
         glBindVertexArray(lineVAO);
         glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(lineVertices), lineVertices);
 
-        // 3. Render the line using your existing light shader
         lightSourceShaders.use();
         lightSourceShaders.setMat4("projection", projection);
         lightSourceShaders.setMat4("view", view);
-        // We use an identity matrix for the model because our lineVertices are already in world space!
         lightSourceShaders.setMat4("model", glm::mat4(1.0f)); 
         lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f)); // Yellow line
 
