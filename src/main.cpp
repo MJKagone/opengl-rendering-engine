@@ -14,8 +14,11 @@
 const int WIDTH = 1280;
 const int HEIGHT = 720;
 
-float lastX = WIDTH / 2;
-float lastY = HEIGHT / 2;
+const float NEAR_PLANE = 1.0f;
+const float FAR_PLANE = 100.0f;
+
+float lastX = WIDTH / 2.0f;
+float lastY = HEIGHT / 2.0f;
 
 bool shadersActive = true;
 bool firstMouse = true;
@@ -24,6 +27,13 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 Camera cam = Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+enum ShaderType {
+    PHONG,
+    CONSTANT,
+    DEPTH
+};
+int shaderType = PHONG;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -56,7 +66,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
     {
-        shadersActive = !shadersActive;
+        if (shaderType >= DEPTH) {shaderType = PHONG;}
+        else {shaderType++;}
     }
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
@@ -129,11 +140,12 @@ int main()
     Shader skyboxShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_skybox.glsl");
     Shader shadowShaders("shaders/vertex/vs_shadows.glsl", "shaders/fragment/fs_shadows.glsl");
     Shader debugShaders("shaders/vertex/vs_debug.glsl", "shaders/fragment/fs_debug.glsl");
+    Shader depthShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_depth.glsl");
 
     //stbi_set_flip_vertically_on_load(true);
 
 	// Load models
-	Model object1("assets/models/modern-bedroom/source/Bedroom.fbx");
+	Model object1("assets/models/modern-bedroom/source/Bedroom(orig).fbx");
 
     // Debug line for directional light
     unsigned int lineVBO, lineVAO;
@@ -309,11 +321,8 @@ int main()
         // 1. PASS: RENDER SHADOW MAP FROM LIGHTS' PERSPECTIVE //
         // NOTE: currently only for directional light          //
         /////////////////////////////////////////////////////////
-        if (shadersActive) {
-            float near_plane = 10.0f;
-            float far_plane = 100.0f;
-
-            glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane);
+        if (shaderType == PHONG) {
+            glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, NEAR_PLANE, FAR_PLANE);
             glm::mat4 lightView = glm::lookAt(dirLightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
@@ -372,19 +381,25 @@ int main()
         //////////////////////////////////////////////////////////
         glm::mat4 view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.worldUp);
         glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::perspective(glm::radians(cam.fov), (float) (WIDTH / HEIGHT), 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(cam.fov), (float) (WIDTH / HEIGHT), NEAR_PLANE, FAR_PLANE);
 
-        if (shadersActive) {
+        if (shaderType == PHONG) {
             phongShaders.setMat4("projection", projection);
             phongShaders.setMat4("view", view);
 
             phongShaders.setVec3("viewPos", cam.pos);
         }
-        else {
+        else if (shaderType == CONSTANT) {
             constantShaders.use();
             constantShaders.setMat4("projection", projection);
             constantShaders.setMat4("view", view);
-            constantShaders.setVec3("viewPos", cam.pos);
+        }
+        else if (shaderType == DEPTH) {
+            depthShaders.use();
+            depthShaders.setFloat("near", NEAR_PLANE);
+            depthShaders.setFloat("far", FAR_PLANE);
+            depthShaders.setMat4("projection", projection);
+            depthShaders.setMat4("view", view);
         }
 
         glm::mat4 model = glm::mat4(1.0f);
@@ -392,15 +407,19 @@ int main()
         model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
         // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-        if (shadersActive) {
+        if (shaderType == PHONG) {
             phongShaders.setMat4("model", model);
             phongShaders.setFloat("transparency", 1.0f);
             object1.Draw(phongShaders);
         }
-        else {
+        else if (shaderType == CONSTANT) {
             constantShaders.setMat4("model", model);
             constantShaders.setFloat("transparency", 1.0f);
             object1.Draw(constantShaders);
+        }
+        else if (shaderType == DEPTH) {
+            depthShaders.setMat4("model", model);
+            object1.Draw(depthShaders);
         }
 
 		// model = glm::mat4(1.0f);

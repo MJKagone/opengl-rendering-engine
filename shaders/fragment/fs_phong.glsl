@@ -53,18 +53,18 @@ float calcShadow(vec4 FragPosLightSpace, vec3 lightDir, vec3 normal)
 	projCoords = projCoords * 0.5f + 0.5f;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	float bias = max(0.0001 * (1.0 - dot(normal, -lightDir)), 0.00005);
-	float shadow = 0.0;
-	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+	float bias = max(0.0001f * (1.0f - dot(normal, -lightDir)), 0.00005f);
+	float shadow = 0.0f;
+	vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
 	for(int x = -1; x <= 1; ++x)
 	{
 		for(int y = -1; y <= 1; ++y)
 		{
 			float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) *texelSize).r;
-			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+			shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
 		}
 	}
-	shadow /= 9.0;
+	shadow /= 9.0f;
 	if (projCoords.z > 1.0f) // note: I had this as .x for some reason?
 		shadow = 0.0f;
 	return shadow;
@@ -107,7 +107,7 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 	
 	// Attenuation
 	float distance = length(light.position - fragPos);
-	float attenuation = 1.0 / (light.constant + light.linear * distance +
+	float attenuation = 1.0f / (light.constant + light.linear * distance +
 		light.quadratic * (distance * distance));
 	ambient *= attenuation;
 	diffuse *= attenuation;
@@ -136,6 +136,5 @@ void main()
     // if (hasEmission) {
     //     result += vec3(texture(texture_emission1, TexCoords));
     // }
-    FragColor = vec4(result, transparency);
-	
+    FragColor = vec4(result, transparency);	
 }
