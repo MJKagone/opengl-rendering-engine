@@ -45,7 +45,7 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 * **Assimp**: Open Asset Import Library for loading 3D models
 * **stb_image**: Image loading for textures
 
-For building, the following should be retrieved and added to the `include` directory:
+For building, the following should be retrieved and added to the project:
 ```
 include/
 ├── third-party/
@@ -53,6 +53,8 @@ include/
 │   ├── glm/
 │   ├── KHR/
 │   ├── stb_image.h
+utils/
+├── glad.c
 ``` 
 
 ## Assets

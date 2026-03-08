@@ -2,5 +2,6 @@
 assets/
 build/
 include/third-party/
+utils/
 lightColorCodes.png
 lightDistanceCodes.png
