@@ -1,6 +1,6 @@
 #version 460 core
 
-#define NR_POINT_LIGHTS 2
+#define MAX_POINT_LIGHTS 10
 
 in vec2 TexCoords;
 in vec3 Normal;
@@ -9,21 +9,24 @@ in vec4 FragPosLightSpace;
 
 out vec4 FragColor;
 
+uniform int numPointLights;
 uniform vec3 viewPos;
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
 uniform sampler2D texture_normal1;
 uniform sampler2D texture_emission1;
+uniform sampler2D shadowMap;
+uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform bool hasEmission;
 uniform float shininess;
 uniform float transparency = 1.0f;
-uniform sampler2D shadowMap;
+uniform float far_plane;
 
-struct Material { // not used
-    sampler2D diffuse;
-    sampler2D specular;
-    float shininess;
-};
+// struct Material {
+//     sampler2D diffuse;
+//     sampler2D specular;
+//     float shininess;
+// };
 // uniform Material material;
 
 struct DirLight {
@@ -45,15 +48,15 @@ struct PointLight {
 	float linear;
 	float quadratic;
 };
-uniform PointLight pointLights[NR_POINT_LIGHTS];
+uniform PointLight pointLights[MAX_POINT_LIGHTS];
 
-float calcShadow(vec4 FragPosLightSpace, vec3 lightDir, vec3 normal)
+float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 {
-	vec3 projCoords  = FragPosLightSpace.xyz / FragPosLightSpace.w;
+	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = projCoords * 0.5f + 0.5f;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	float bias = max(0.0001f * (1.0f - dot(normal, -lightDir)), 0.00005f);
+	float bias = max(0.005f * (1.0f - dot(normal, -lightDir)), 0.0005f);
 	float shadow = 0.0f;
 	vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
 	for(int x = -1; x <= 1; ++x)
@@ -67,6 +70,17 @@ float calcShadow(vec4 FragPosLightSpace, vec3 lightDir, vec3 normal)
 	shadow /= 9.0f;
 	if (projCoords.z > 1.0f) // note: I had this as .x for some reason?
 		shadow = 0.0f;
+	return shadow;
+}
+
+float calcPointShadow(vec3 fragPos, vec3 lightPos, vec3 normal, int lightIndex)
+{
+	vec3 fragToLight = fragPos - lightPos;
+	float closestDepth = texture(shadowCubemaps[lightIndex], fragToLight).r;
+	closestDepth *= far_plane; // undo mapping [0;1]
+	float currentDepth = length(fragToLight);
+	float bias = 0.005f;
+	float shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;
 	return shadow;
 }
 
@@ -86,11 +100,11 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffuseTex, ve
 	vec3 specular = light.specular * specStrength * specularTex;
 
     // Total
-	float shadow = calcShadow(FragPosLightSpace, lightDir, normal);
+	float shadow = calcDirShadow(FragPosLightSpace, lightDir, normal);
     return light.color * ambient + (1.0f - shadow) * (diffuse + specular);
 }
 
-vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffuseTex, vec3 specularTex)
+vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffuseTex, vec3 specularTex, int lightIndex)
 {
 	// Ambient
 	vec3 ambient = light.ambient * diffuseTex;
@@ -101,8 +115,8 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 	vec3 diffuse = light.diffuse * diffStrength * diffuseTex;
 
 	// Specular
-	vec3 reflectDir = reflect(lightDir, normal);
-	float specStrength = pow(max(dot(viewDir, reflectDir), 0.0f), shininess);
+	vec3 halfwayDir = normalize(-lightDir + viewDir);
+	float specStrength = pow(max(dot(normal, halfwayDir), 0.0f), shininess);
 	vec3 specular = light.specular * specStrength * specularTex;
 	
 	// Attenuation
@@ -113,7 +127,11 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 	diffuse *= attenuation;
 	specular *= attenuation;
 
-	return light.color * (ambient + diffuse + specular);
+	// Total
+	float shadow = calcPointShadow(fragPos, light.position, normal, lightIndex);
+	return light.color * ambient + (1.0f - shadow) * (diffuse + specular);
+	// return light.color * ambient + (diffuse + specular);
+
 }
 
 void main()
@@ -128,13 +146,13 @@ void main()
 	// Lighting calculations
 	vec3 result = calcDirLight(dirLight, normal, viewDir, diffuseTex, specularTex);
 	// vec3 result = vec3(0.0f, 0.0f, 0.0f);
-	for (int i = 0; i < NR_POINT_LIGHTS; i++)
+	for (int i = 0; i < numPointLights; i++)
 	{
-		result += calcPointLight(pointLights[i], normal, FragPos, viewDir, diffuseTex, specularTex);
+		result += calcPointLight(pointLights[i], normal, FragPos, viewDir, diffuseTex, specularTex, i);
 	}
 	// Output
-    // if (hasEmission) {
-    //     result += vec3(texture(texture_emission1, TexCoords));
-    // }
+    if (hasEmission) {
+        result += vec3(texture(texture_emission1, TexCoords));
+    }
     FragColor = vec4(result, transparency);	
 }
