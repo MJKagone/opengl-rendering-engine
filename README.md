@@ -45,6 +45,16 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 * **Assimp**: Open Asset Import Library for loading 3D models
 * **stb_image**: Image loading for textures
 
+For building, the following should be retrieved and added to the `include` directory:
+```
+include/
+├── third-party/
+│   ├── glad/
+│   ├── glm/
+│   ├── KHR/
+│   ├── stb_image.h
+``` 
+
 ## Assets
 
 The following open-source assets are used in the video demo:

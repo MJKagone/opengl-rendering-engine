@@ -1,5 +1,6 @@
 .vscode/
 assets/
 build/
+include/third-party/
 lightColorCodes.png
 lightDistanceCodes.png
