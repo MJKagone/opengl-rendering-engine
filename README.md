@@ -2,7 +2,7 @@
 
 [OpenGLScene.webm](https://github.com/user-attachments/assets/ad682867-f6ab-464b-afb4-fddeb1e27db4)
 
-A barebones 3D rendering engine built to learn graphics programming with the help of the LearnOpenGL tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
+A WIP 3D rendering engine built to learn graphics programming with the help of the LearnOpenGL tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
 
 ## Features
 
@@ -18,6 +18,13 @@ A barebones 3D rendering engine built to learn graphics programming with the hel
 * **Camera system**: Interactive 3D fly-camera with zoom
 * **Interactive shaders**: Toggle between Phong, Constant and Depth visualization shaders at runtime
 
+## Future Plans
+- [ ] **Saving/loading scenes**: Implement a scene graph and serialization system to save and load complex scenes
+- [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
+- [ ] **Advanced textures**: Add support for normal maps etc.
+- [ ] **HDR & bloom**: Implement high dynamic range rendering and bloom post-processing effects for light sources
+- [ ] **PBR...**: More advanced shading models TBD
+
 ## Dependencies
 
 * **OpenGL 4.6** (Core Profile)
@@ -32,16 +39,15 @@ A barebones 3D rendering engine built to learn graphics programming with the hel
 | Key/Input | Action |
 | :--- | :--- |
 | **WASDEQ** | Move forward / backward / left / right / up / down |
-| **Mouse move** | Look around (Yaw/Pitch) |
-| **Mouse scroll**| Zoom (Adjust field of view) |
+| **Mouse move** | Look around (yaw/pitch) |
+| **Mouse scroll**| Zoom (adjust field of view) |
 | **L** | Toggle active shader (Phong / Constant / Depth) |
 | **Space** | Print current camera position to standard output |
 | **Escape** | Close the application |
 
-## Project Structure
+## Assets
 
-* `src/main.cpp`: Main application loop, rendering logic, and window initialization
-* `include/Shader.h`: Shader compilation, linking, and uniform management
-* `include/Camera.h`: FPS-style camera implementation
-* `include/Mesh.h` & `include/Model_robust.h`: Assimp-based model and texture loading
-* `shaders/`: Contains vertex, fragment, and geometry GLSL shaders for different lighting and shadow passes
+The following open-source assets are used in the video demo:
+
+- [Modern Bedroom by Visthétique](https://sketchfab.com/3d-models/modern-bedroom-b74c53589e334ba1ba4b43883d7c9e21)
+- [Ceiling Fan by Prince Obrymec](https://sketchfab.com/3d-models/ceiling-fan-e16bd23ae02a4d2db89e3a0158821681)
