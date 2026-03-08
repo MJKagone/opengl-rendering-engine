@@ -9,7 +9,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <ctime>
 // #include "loadTexture.h"
-#include "Model_robust.h"
+#include "Model.h"
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;

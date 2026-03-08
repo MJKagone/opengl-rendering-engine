@@ -52,7 +52,7 @@ private:
     {
         // read file via ASSIMP
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_PreTransformVertices);
         // check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
         {
@@ -164,6 +164,9 @@ private:
         // 4. height maps
         std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        // 5. emission maps
+        std::vector<Texture> emissionMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emission");
+        textures.insert(textures.end(), emissionMaps.begin(), emissionMaps.end());
         
         // return a mesh object created from the extracted mesh data
         return Mesh(vertices, indices, textures);
@@ -206,18 +209,68 @@ private:
 
 unsigned int TextureFromFile(const char *path, const string &directory, bool gamma)
 {
-    string filename = string(path);
-	std::replace(filename.begin(), filename.end(), '\\', '/'); // for Linux
-    filename = directory + '/' + filename;
+    string rawPath = string(path);
+    std::replace(rawPath.begin(), rawPath.end(), '\\', '/'); // Standardize slashes
 
+    // 1. Extract just the filename (e.g., "Air_BaseColor.jpg")
+    string filename = rawPath;
+    size_t lastSlash = filename.find_last_of('/');
+    if (lastSlash != string::npos) {
+        filename = filename.substr(lastSlash + 1);
+    }
+
+    // 2. Determine a "base" directory assuming the model is in a "source" subfolder
+    string baseDir = directory;
+    size_t dirLastSlash = baseDir.find_last_of('/');
+    if (dirLastSlash != string::npos) {
+        baseDir = baseDir.substr(0, dirLastSlash); // e.g., "assets/modern-bedroom"
+    }
+
+    // 3. Build a list of candidate paths to try
+    std::vector<string> pathsToTry = {
+        directory + '/' + rawPath,                  // The exact path Assimp requested
+        directory + '/' + filename,                 // Just the file in the model's directory
+        baseDir + "/textures/" + filename           // The file in a sibling "textures" folder
+    };
+
+    // 4. Create fallback extensions (.jpg <-> .jpeg, .psd -> .png)
+    std::vector<string> expandedPaths;
+    for (const string& p : pathsToTry) {
+        expandedPaths.push_back(p);
+        
+        // If it asks for .jpg, also try .jpeg
+        if (p.length() >= 4 && p.substr(p.length() - 4) == ".jpg") {
+            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpeg");
+        } 
+        // If it asks for .jpeg, also try .jpg
+        else if (p.length() >= 5 && p.substr(p.length() - 5) == ".jpeg") {
+            expandedPaths.push_back(p.substr(0, p.length() - 5) + ".jpg");
+        }
+        // If it asks for .psd, try .png
+        else if (p.length() >= 4 && p.substr(p.length() - 4) == ".psd") {
+            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".png");
+        }
+    }
+
+    // 5. Try loading the texture from our list of candidate paths
     unsigned int textureID;
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;
-	std::cout << "Loading texture: " << filename << std::endl;
-    unsigned char *data = stbi_load(filename.c_str(), &width, &height, &nrComponents, 0);
+    unsigned char *data = nullptr;
+    string successfulPath = "";
+
+    for (const string& p : expandedPaths) {
+        data = stbi_load(p.c_str(), &width, &height, &nrComponents, 0);
+        if (data) {
+            successfulPath = p;
+            break; // Stop looking once we successfully load the image
+        }
+    }
+
     if (data)
     {
+        std::cout << "Loaded texture: " << successfulPath << std::endl;
         GLenum format;
         if (nrComponents == 1)
             format = GL_RED;
@@ -239,7 +292,7 @@ unsigned int TextureFromFile(const char *path, const string &directory, bool gam
     }
     else
     {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
+        std::cout << "Texture failed to load completely. Original path: " << path << std::endl;
         stbi_image_free(data);
     }
 

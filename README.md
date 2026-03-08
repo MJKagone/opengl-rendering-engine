@@ -6,7 +6,7 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 
 ## Features
 
-* **Model Loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp (much to improve here, mostly copy-pasted from the tutorial...)
+* **Model loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp (much to improve here, mostly copy-pasted from the tutorial...)
 * **Lighting**:
   * Directional light
   * Multiple point lights with configurable attenuation
