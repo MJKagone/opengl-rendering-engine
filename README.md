@@ -2,7 +2,7 @@
 
 [OpenGLScene.webm](https://github.com/user-attachments/assets/ad682867-f6ab-464b-afb4-fddeb1e27db4)
 
-A WIP 3D rendering engine built to learn graphics programming with the help of the LearnOpenGL tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
+A WIP 3D rendering engine built to learn graphics programming with the help of the [LearnOpenGL](https://learnopengl.com/) tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
 
 ## Features
 
@@ -25,6 +25,17 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 - [ ] **HDR & bloom**: Implement high dynamic range rendering and bloom post-processing effects for light sources
 - [ ] **PBR...**: More advanced shading models TBD
 
+## Controls
+
+| Key/Input | Action |
+| :--- | :--- |
+| **WASDEQ** | Move forward / backward / left / right / up / down |
+| **Mouse move** | Look around (yaw/pitch) |
+| **Mouse scroll**| Zoom (adjust field of view) |
+| **L** | Toggle active shader (Phong / Constant / Depth*) (*not included in demo) |
+| **Space** | Print current camera position to standard output (helps with object/light placement) |
+| **Escape** | Close the application | 
+
 ## Dependencies
 
 * **OpenGL 4.6** (Core Profile)
@@ -33,17 +44,6 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 * **GLM**: OpenGL Mathematics library for vector and matrix operations
 * **Assimp**: Open Asset Import Library for loading 3D models
 * **stb_image**: Image loading for textures
-
-## Controls
-
-| Key/Input | Action |
-| :--- | :--- |
-| **WASDEQ** | Move forward / backward / left / right / up / down |
-| **Mouse move** | Look around (yaw/pitch) |
-| **Mouse scroll**| Zoom (adjust field of view) |
-| **L** | Toggle active shader (Phong / Constant / Depth) |
-| **Space** | Print current camera position to standard output |
-| **Escape** | Close the application |
 
 ## Assets
 

@@ -284,7 +284,7 @@ int main()
 
     phongShaders.use();
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
-    phongShaders.setFloat("far_plane", 30.0f);
+    phongShaders.setFloat("far_plane", 25.0f);
     // Initialize all samplerCube uniforms to prevent type conflicts on texture unit 0
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
