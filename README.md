@@ -6,24 +6,24 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 
 ## Features
 
-* **Model loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp (much to improve here, mostly copy-pasted from the tutorial...)
-* **Lighting**:
+- [x] **Model loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp (much to improve here, mostly copy-pasted from the tutorial...)
+- [x] **Lighting**:
   * Directional light
   * Multiple point lights with configurable attenuation
   * Blinn-Phong shading
-* **Shadow mapping**:
+- [x] **Shadow mapping**:
   * Calculates directional light shadows using 2D depth maps
   * Calculates omnidirectional point light shadows using depth cubemaps and geometry shaders
   * Percentage-Closer Filtering (PCF) for softer shadow edges
-* **Camera system**: Interactive 3D fly-camera with zoom
-* **Interactive shaders**: Toggle between Phong, Constant and Depth visualization shaders at runtime
+- [x] **Camera system**: Interactive 3D fly-camera with zoom
+- [x] **Interactive shaders**: Toggle between Phong, Constant and Depth shaders at runtime
+- [x] **Multisample anti-aliasing**: 4x MSAA for smoother edges
 
 ## Future Plans
 - [ ] **Saving/loading scenes**: Implement a scene graph and serialization system to save and load complex scenes
 - [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
-- [ ] **Advanced textures**: Add support for normal maps etc.
 - [ ] **HDR & bloom**: Implement high dynamic range rendering and bloom post-processing effects for light sources
-- [ ] **PBR...**: More advanced shading models TBD
+- [ ] **PBR**: More advanced shading models TBD
 
 ## Controls
 
