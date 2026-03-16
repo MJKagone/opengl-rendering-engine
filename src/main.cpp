@@ -19,6 +19,7 @@ const int NUM_POINT_LIGHTS = 3;
 
 const float NEAR_PLANE = 0.5f;
 const float FAR_PLANE = 100.0f;
+const float ROTATION_SPEED = 275.0f;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
@@ -36,7 +37,7 @@ enum ShaderType {
     CONSTANT,
     DEPTH
 };
-int shaderType = CONSTANT;
+int shaderType = PHONG;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -69,7 +70,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
     {
-        if (shaderType >= CONSTANT) {shaderType = PHONG;}
+        if (shaderType >= DEPTH) {shaderType = PHONG;}
         else {shaderType++;}
     }
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
@@ -384,7 +385,7 @@ int main()
             model =  glm::mat4(1.0f);
             model = glm::translate(model, glm::vec3(4.0f, 15.7f, -3.0f));
             model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
-            model = glm::rotate(model, glm::radians(200.0f) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
             dirShadowShaders.setMat4("model", model);
             lamp.Draw(dirShadowShaders);
 
@@ -441,7 +442,7 @@ int main()
                 model =  glm::mat4(1.0f);
                 model = glm::translate(model, glm::vec3(4.0f, 16.2f, -1.67f));
                 model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
-                model = glm::rotate(model, glm::radians(200.0f) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+                model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
                 pointShadowShaders.setMat4("model", model);
                 lamp.Draw(pointShadowShaders);
 
@@ -511,7 +512,7 @@ int main()
         model =  glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(4.0f, 16.2f, -3.0f));
         model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
-        model = glm::rotate(model, glm::radians(200.0f) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
         
         normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
         if (shaderType == PHONG) {

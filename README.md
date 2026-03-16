@@ -22,6 +22,7 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 ## Future Plans
 - [ ] **Saving/loading scenes**: Implement a scene graph and serialization system to save and load complex scenes
 - [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
+- [ ] **More robust model loading**: Handle missing textures etc.
 - [ ] **HDR & bloom**: Implement high dynamic range rendering and bloom post-processing effects for light sources
 - [ ] **PBR**: More advanced shading models TBD
 
