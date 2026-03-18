@@ -22,6 +22,15 @@ uniform float shininess;
 uniform float transparency = 1.0f;
 uniform float far_plane;
 
+const vec3 sampleOffsetDirections[20] = vec3[]
+(
+	vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
+	vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+	vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+	vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+	vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+);
+
 // struct Material {
 //     sampler2D diffuse;
 //     sampler2D specular;
@@ -82,15 +91,6 @@ float calcPointShadow(vec3 fragPos, vec3 lightPos, vec3 normal, int lightIndex)
     float diskRadius = 0.05f;
     int samples = 20;
 
-    vec3 sampleOffsetDirections[20] = vec3[]
-    (
-       vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
-       vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
-       vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
-       vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
-       vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
-    );
-
     for(int i = 0; i < samples; ++i)
     {
         float closestDepth = texture(shadowCubemaps[lightIndex], fragToLight + sampleOffsetDirections[i] * diskRadius).r;
@@ -147,6 +147,9 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 	specular *= attenuation;
 
 	// Total
+	if (attenuation < 0.01f) { // avoid unnecessary shadow calculations
+		return light.color * (ambient + diffuse + specular);
+	}; 
 	float shadow = calcPointShadow(fragPos, light.position, normal, lightIndex);
 	return light.color * ambient + (1.0f - shadow) * (diffuse + specular);
 	// return light.color * ambient + (diffuse + specular);
