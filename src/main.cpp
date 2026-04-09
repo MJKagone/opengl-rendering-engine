@@ -2,14 +2,14 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <math.h>
-#include "Camera.h"
-#include "Shader.h"
+#include "Camera.hpp"
+#include "Shader.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <ctime>
 // #include "loadTexture.h"
-#include "Model.h"
+#include "Model.hpp"
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
@@ -37,7 +37,7 @@ enum ShaderType {
     CONSTANT,
     DEPTH
 };
-int shaderType = PHONG;
+int shaderType = CONSTANT;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -70,7 +70,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
     {
-        if (shaderType >= DEPTH) {shaderType = PHONG;}
+        if (shaderType >= CONSTANT) {shaderType = PHONG;}
         else {shaderType++;}
     }
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
