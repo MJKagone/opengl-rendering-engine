@@ -156,7 +156,7 @@ int main()
     Model lamp("assets/models/ceiling-fan(2)/source/ceiling_fan.fbx");
 
     // Debug line for directional light
-    unsigned int lineVBO, lineVAO;
+    GLuint lineVBO, lineVAO;
     glGenBuffers(1, &lineVBO);
     glGenVertexArrays(1, &lineVAO);
     glBindVertexArray(lineVAO);
@@ -210,7 +210,7 @@ int main()
         -0.5f,  0.5f,  0.5f,
         -0.5f,  0.5f, -0.5f,
 	};
-	unsigned int lightVBO, lightVAO;
+	GLuint lightVBO, lightVAO;
 	glGenBuffers(1, &lightVBO);
     glGenVertexArrays(1, &lightVAO);
 	glBindVertexArray(lightVAO);
@@ -220,10 +220,10 @@ int main()
 	glEnableVertexAttribArray(0);
 
     // Generate directional light shadow map FBO and texture
-    unsigned int shadowMapFBO;
+    GLuint shadowMapFBO;
     glGenFramebuffers(1, &shadowMapFBO);
     
-    unsigned int shadowMap;
+    GLuint shadowMap;
     glGenTextures(1, &shadowMap);
     glBindTexture(GL_TEXTURE_2D, shadowMap);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
@@ -241,16 +241,16 @@ int main()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Generate point light shadow cubemap FBOs and textures
-    unsigned int shadowCubemapFBO[NUM_POINT_LIGHTS];
-    unsigned int shadowCubemap[NUM_POINT_LIGHTS];
+    GLuint shadowCubemapFBO[NUM_POINT_LIGHTS];
+    GLuint shadowCubemap[NUM_POINT_LIGHTS];
 
-    for (unsigned int i = 0; i < NUM_POINT_LIGHTS; ++i)
+    for (int i = 0; i < NUM_POINT_LIGHTS; ++i)
     {
         glGenFramebuffers(1, &shadowCubemapFBO[i]);
         glGenTextures(1, &shadowCubemap[i]);
         glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
         
-        for (unsigned int j = 0; j < 6; ++j)
+        for (int j = 0; j < 6; ++j)
         {
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         }
@@ -420,7 +420,7 @@ int main()
                     glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0)));
                 
                 pointShadowShaders.use();
-                for (unsigned int j = 0; j < 6; ++j)                {
+                for (int j = 0; j < 6; ++j)                {
                     pointShadowShaders.setMat4("shadowMatrices[" + std::to_string(j) + "]", shadowTransforms[j]);
                 }
                 pointShadowShaders.setFloat("far", far);
@@ -615,14 +615,14 @@ int main()
 }
 
 
-unsigned int loadCubemap(vector<std::string> faces)
+GLuint loadCubemap(vector<std::string> faces)
 {
-    unsigned int textureID;
+    GLuint textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
     int width, height, nrChannels;
-    for (unsigned int i = 0; i < faces.size(); i++)
+    for (size_t i = 0; i < faces.size(); i++)
     {
         unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
         if (data)

@@ -11,7 +11,7 @@
 class Shader
 {
 public:
-    unsigned int ID;
+    GLuint ID;
     // constructor generates the shader on the fly
     // ------------------------------------------------------------------------
     Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr)
@@ -59,7 +59,7 @@ public:
         const char* vShaderCode = vertexCode.c_str();
         const char * fShaderCode = fragmentCode.c_str();
         // 2. compile shaders
-        unsigned int vertex, fragment;
+        GLuint vertex, fragment;
         // vertex shader
         vertex = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex, 1, &vShaderCode, NULL);
@@ -71,7 +71,7 @@ public:
         glCompileShader(fragment);
         checkCompileErrors(fragment, "FRAGMENT");
         // if geometry shader is given, compile geometry shader
-        unsigned int geometry;
+        GLuint geometry;
         if(geometryPath != nullptr)
         {
             const char * gShaderCode = geometryCode.c_str();

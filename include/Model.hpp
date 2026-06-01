@@ -22,7 +22,7 @@
 #include <vector>
 using namespace std;
 
-unsigned int TextureFromFile(const char *path, const string &directory, bool gamma = false);
+GLuint TextureFromFile(const char *path, const string &directory, bool gamma = false);
 
 class Model 
 {
@@ -42,7 +42,7 @@ public:
     // draws the model, and thus all its meshes
     void Draw(Shader &shader)
     {
-        for(unsigned int i = 0; i < meshes.size(); i++)
+        for(size_t i = 0; i < meshes.size(); i++)
             meshes[i].Draw(shader);
     }
     
@@ -89,7 +89,7 @@ private:
     {
         // data to fill
         vector<Vertex> vertices;
-        vector<unsigned int> indices;
+        vector<GLuint> indices;
         vector<Texture> textures;
 
         // walk through each of the mesh's vertices
@@ -177,13 +177,13 @@ private:
     vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, string typeName)
     {
         vector<Texture> textures;
-        for(unsigned int i = 0; i < mat->GetTextureCount(type); i++)
+        for(int i = 0; i < mat->GetTextureCount(type); i++)
         {
             aiString str;
             mat->GetTexture(type, i, &str);
             // check if texture was loaded before and if so, continue to next iteration: skip loading a new texture
             bool skip = false;
-            for(unsigned int j = 0; j < textures_loaded.size(); j++)
+            for(size_t j = 0; j < textures_loaded.size(); j++)
             {
                 if(std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0)
                 {
@@ -207,7 +207,7 @@ private:
 };
 
 
-unsigned int TextureFromFile(const char *path, const string &directory, bool gamma)
+GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
 {
     string rawPath = string(path);
     std::replace(rawPath.begin(), rawPath.end(), '\\', '/'); // Standardize slashes
@@ -253,7 +253,7 @@ unsigned int TextureFromFile(const char *path, const string &directory, bool gam
     }
 
     // 5. Try loading the texture from our list of candidate paths
-    unsigned int textureID;
+    GLuint textureID;
     glGenTextures(1, &textureID);
 
     int width, height, nrComponents;

@@ -31,7 +31,7 @@ struct Vertex {
 };
 
 struct Texture {
-    unsigned int id;
+    GLuint id;
     string type;
     string path;
 };
@@ -40,12 +40,12 @@ class Mesh {
 public:
     // mesh Data
     vector<Vertex>       vertices;
-    vector<unsigned int> indices;
+    vector<GLuint> indices;
     vector<Texture>      textures;
-    unsigned int VAO;
+    GLuint VAO;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -66,7 +66,7 @@ public:
         unsigned int emissionNr = 1;
         bool hasEmissionMap = false;
 
-        for(unsigned int i = 0; i < textures.size(); i++)
+        for (int i = 0; i < static_cast<int>(textures.size()); i++)
         {
             glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
             // retrieve texture number (the N in diffuse_textureN)
@@ -98,11 +98,11 @@ public:
         
         // draw mesh
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, static_cast<unsigned int>(indices.size()), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         // always good practice to set everything back to defaults once configured.
-        for(unsigned int i = 0; i < textures.size(); i++)
+        for(size_t i = 0; i < textures.size(); i++)
         {
             glActiveTexture(GL_TEXTURE0 + i);
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -112,7 +112,7 @@ public:
 
 private:
     // render data 
-    unsigned int VBO, EBO;
+    GLuint VBO, EBO;
 
     // initializes all the buffer objects/arrays
     void setupMesh()
@@ -131,7 +131,7 @@ private:
         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);  
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
 
         // set the vertex attribute pointers
         // vertex Positions
