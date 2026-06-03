@@ -158,6 +158,7 @@ private:
         // 2. specular maps
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", false);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        bool hasSpecularTexture = !specularMaps.empty();
         // 3. normal maps
         std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", false);
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
@@ -167,9 +168,34 @@ private:
         // 5. emission maps
         std::vector<Texture> emissionMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emission", this->gammaCorrection);
         textures.insert(textures.end(), emissionMaps.begin(), emissionMaps.end());
+
+        // Robust material color extraction chain
+        glm::vec3 diffuseColor(1.0f); 
+        aiColor4D pbrColor(1.0f, 1.0f, 1.0f, 1.0f);
+        aiColor3D legacyColor(1.0f, 1.0f, 1.0f);
+
+        // Try modern PBR base color slot first
+        if (material->Get(AI_MATKEY_BASE_COLOR, pbrColor) == AI_SUCCESS) {
+            diffuseColor = glm::vec3(pbrColor.r, pbrColor.g, pbrColor.b);
+        }
+        // Fall back to legacy diffuse color slot
+        else if (material->Get(AI_MATKEY_COLOR_DIFFUSE, legacyColor) == AI_SUCCESS) {
+            diffuseColor = glm::vec3(legacyColor.r, legacyColor.g, legacyColor.b);
+        }
+
+        // If no diffuse texture exists and the color is still pure black, check the ambient color slot
+        if (diffuseMaps.empty() && diffuseColor == glm::vec3(0.0f)) {
+            if (material->Get(AI_MATKEY_COLOR_AMBIENT, legacyColor) == AI_SUCCESS) {
+                diffuseColor = glm::vec3(legacyColor.r, legacyColor.g, legacyColor.b);
+            }
+            // Safeguard: if still black, use dark gray so geometry isn't completely unlit
+            if (diffuseColor == glm::vec3(0.0f)) {
+                diffuseColor = glm::vec3(0.15f);
+            }
+        }
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures);
+        return Mesh(vertices, indices, textures, diffuseColor, !diffuseMaps.empty(), hasSpecularTexture);
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
@@ -194,12 +220,16 @@ private:
             }
             if(!skip)
             {   // if texture hasn't been loaded already, load it
-                Texture texture;
-                texture.id = TextureFromFile(str.C_Str(), this->directory, gamma);
-                texture.type = typeName;
-                texture.path = str.C_Str();
-                textures.push_back(texture);
-                textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
+                GLuint textureID = TextureFromFile(str.C_Str(), this->directory, gamma);
+                if (textureID != 0)
+                {
+                    Texture texture;
+                    texture.id = textureID;
+                    texture.type = typeName;
+                    texture.path = str.C_Str();
+                    textures.push_back(texture);
+                    textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecessary load duplicate textures.
+                }
             }
         }
         return textures;
@@ -250,12 +280,13 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
         else if (p.length() >= 4 && p.substr(p.length() - 4) == ".psd") {
             expandedPaths.push_back(p.substr(0, p.length() - 4) + ".png");
         }
+        else if (p.length() >= 4 && p.substr(p.length() - 4) == ".png") {
+            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpg");
+            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpeg");
+        }
     }
 
     // 5. Try loading the texture from our list of candidate paths
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-
     int width, height, nrComponents;
     unsigned char *data = nullptr;
     string successfulPath = "";
@@ -270,6 +301,8 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
 
     if (data)
     {
+        GLuint textureID;
+        glGenTextures(1, &textureID);
         std::cout << "Loaded texture: " << successfulPath << std::endl;
         GLenum internalFormat;
         GLenum dataFormat;
@@ -298,12 +331,12 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         stbi_image_free(data);
+        return textureID;
     }
     else
     {
         std::cout << "Texture failed to load completely. Original path: " << path << std::endl;
         stbi_image_free(data);
+        return 0;
     }
-
-    return textureID;
 }

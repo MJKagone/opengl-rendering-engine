@@ -15,6 +15,9 @@ uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
 uniform sampler2D texture_normal1;
 uniform sampler2D texture_emission1;
+uniform vec3 material_diffuseColor;
+uniform bool hasDiffuseTexture;
+uniform bool hasSpecularTexture;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform bool hasEmission;
@@ -161,8 +164,9 @@ void main()
 	// Properties
 	vec3 normal = normalize(Normal);
 	vec3 viewDir = normalize(viewPos - FragPos);
-	vec3 diffuseTex = vec3(texture(texture_diffuse1, TexCoords));
-	vec3 specularTex = vec3(texture(texture_specular1, TexCoords));
+	// Fall back to the solid material color if no texture exists
+    vec3 diffuseTex = hasDiffuseTexture ? vec3(texture(texture_diffuse1, TexCoords)) : material_diffuseColor;
+	vec3 specularTex = hasSpecularTexture ? vec3(texture(texture_specular1, TexCoords)) : vec3(0.2f);
 	vec3 emissionTex = vec3(texture(texture_emission1, TexCoords));
 
 	// Lighting calculations

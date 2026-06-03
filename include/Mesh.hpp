@@ -39,17 +39,23 @@ struct Texture {
 class Mesh {
 public:
     // mesh Data
-    vector<Vertex>       vertices;
+    vector<Vertex> vertices;
     vector<GLuint> indices;
-    vector<Texture>      textures;
+    vector<Texture> textures;
     GLuint VAO;
+    glm::vec3 diffuseColor;
+    bool hasDiffuseTexture;
+    bool hasSpecularTexture;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false)
     {
         this->vertices = vertices;
         this->indices = indices;
         this->textures = textures;
+        this->diffuseColor = diffuseColor;
+        this->hasDiffuseTexture = hasDiffuseTexture;
+        this->hasSpecularTexture = hasSpecularTexture;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
@@ -93,8 +99,10 @@ public:
             glBindTexture(GL_TEXTURE_2D, textures[i].id);
         }
         
-        // Pass the boolean flag to the fragment shader
         glUniform1i(glGetUniformLocation(shader.ID, "hasEmission"), hasEmissionMap);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasDiffuseTexture"), hasDiffuseTexture);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasSpecularTexture"), hasSpecularTexture);
+        glUniform3fv(glGetUniformLocation(shader.ID, "material_diffuseColor"), 1, &diffuseColor[0]);
         
         // draw mesh
         glBindVertexArray(VAO);

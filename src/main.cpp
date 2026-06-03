@@ -156,7 +156,6 @@ int main()
 	// Load models
 	Model scene("assets/models/modern-bedroom/source/Bedroom.fbx");
     Model lamp("assets/models/ceiling-fan(2)/source/ceiling_fan.fbx");
-    int idfnjv;
 
     // Debug line for directional light
     GLuint lineVBO, lineVAO;

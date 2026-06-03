@@ -1,9 +1,12 @@
-# Define the target as the actual file path
-build/main: src/main.cpp utils/glad.c
-	g++ src/main.cpp utils/glad.c -o build/main -Iinclude -Iinclude/third-party -lglfw -ldl -lGL -lassimp
+# Define the path to your header files
+HEADERS = include/Camera.hpp include/Mesh.hpp include/Model.hpp include/Shader.hpp
 
-# A "phony" target so you can just type 'make' instead of 'make build/main'
+# Default target placed at the top so 'make' runs it automatically
 all: build/main
+
+# Include the headers as prerequisites
+build/main: src/main.cpp utils/glad.c $(HEADERS)
+	g++ src/main.cpp utils/glad.c -o build/main -Iinclude -Iinclude/third-party -lglfw -ldl -lGL -lassimp
 
 clean:
 	rm -f build/main
