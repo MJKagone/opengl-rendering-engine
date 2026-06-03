@@ -101,6 +101,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, GL_TRUE);
     // glfwWindowHint(GLFW_DEPTH_BITS, 32);
 
     // Create a window
@@ -138,6 +139,7 @@ int main()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_CULL_FACE);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_FRAMEBUFFER_SRGB);
 	
 	// Define shaders
 	Shader phongShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_phong.glsl");
@@ -154,6 +156,7 @@ int main()
 	// Load models
 	Model scene("assets/models/modern-bedroom/source/Bedroom.fbx");
     Model lamp("assets/models/ceiling-fan(2)/source/ceiling_fan.fbx");
+    int idfnjv;
 
     // Debug line for directional light
     GLuint lineVBO, lineVAO;
