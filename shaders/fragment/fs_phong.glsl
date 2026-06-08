@@ -6,6 +6,7 @@ in vec2 TexCoords;
 in vec3 Normal;
 in vec3 FragPos;
 in vec4 FragPosLightSpace;
+in mat3 TBN;
 
 out vec4 FragColor;
 
@@ -18,6 +19,7 @@ uniform sampler2D texture_emission1;
 uniform vec3 material_diffuseColor;
 uniform bool hasDiffuseTexture;
 uniform bool hasSpecularTexture;
+uniform bool hasNormalTexture;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform bool hasEmission;
@@ -162,9 +164,15 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 void main()
 {
 	// Properties
-	vec3 normal = normalize(Normal);
 	vec3 viewDir = normalize(viewPos - FragPos);
-	// Fall back to the solid material color if no texture exists
+	vec3 normal;
+	if (hasNormalTexture) {
+		vec3 normalMap = texture(texture_normal1, TexCoords).rgb;
+		vec3 unpackedNormal = normalMap * 2.0 - 1.0;
+		normal = normalize(TBN * unpackedNormal);
+	} else {
+		normal = normalize(Normal);
+	}
     vec3 diffuseTex = hasDiffuseTexture ? vec3(texture(texture_diffuse1, TexCoords)) : material_diffuseColor;
 	vec3 specularTex = hasSpecularTexture ? vec3(texture(texture_specular1, TexCoords)) : vec3(0.2f);
 	vec3 emissionTex = vec3(texture(texture_emission1, TexCoords));

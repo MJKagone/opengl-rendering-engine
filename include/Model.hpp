@@ -155,13 +155,19 @@ private:
         // 1. diffuse maps
         vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", this->gammaCorrection);
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+        bool hasDiffuseTexture = !diffuseMaps.empty();
         // 2. specular maps
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", false);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         bool hasSpecularTexture = !specularMaps.empty();
         // 3. normal maps
-        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", false);
+        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", false);
+        // Fallback to HEIGHT if NORMALS is empty (common for .obj files)
+        if (normalMaps.empty()) {
+            normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", false);
+        }
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+        bool hasNormalTexture = !normalMaps.empty();
         // 4. height maps
         std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", false);
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
@@ -193,9 +199,20 @@ private:
                 diffuseColor = glm::vec3(0.15f);
             }
         }
+
+        float shininess = 32.0f;
+        float extractedShininess;
+
+        // Try to get the shininess from the material
+        if (material->Get(AI_MATKEY_SHININESS, extractedShininess) == AI_SUCCESS) {
+            if (extractedShininess > 1.0f) {
+                shininess = extractedShininess;
+            }
+        }
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, diffuseColor, !diffuseMaps.empty(), hasSpecularTexture);
+        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, shininess);
+        
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.

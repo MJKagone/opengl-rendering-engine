@@ -44,11 +44,13 @@ public:
     vector<Texture> textures;
     GLuint VAO;
     glm::vec3 diffuseColor;
+    float shininess;
     bool hasDiffuseTexture;
     bool hasSpecularTexture;
+    bool hasNormalTexture;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, float shininess = 32.0f)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -56,6 +58,8 @@ public:
         this->diffuseColor = diffuseColor;
         this->hasDiffuseTexture = hasDiffuseTexture;
         this->hasSpecularTexture = hasSpecularTexture;
+        this->hasNormalTexture = hasNormalTexture;
+        this->shininess = shininess;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
@@ -102,7 +106,9 @@ public:
         glUniform1i(glGetUniformLocation(shader.ID, "hasEmission"), hasEmissionMap);
         glUniform1i(glGetUniformLocation(shader.ID, "hasDiffuseTexture"), hasDiffuseTexture);
         glUniform1i(glGetUniformLocation(shader.ID, "hasSpecularTexture"), hasSpecularTexture);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasNormalTexture"), hasNormalTexture);
         glUniform3fv(glGetUniformLocation(shader.ID, "material_diffuseColor"), 1, &diffuseColor[0]);
+        glUniform1f(glGetUniformLocation(shader.ID, "shininess"), this->shininess);
         
         // draw mesh
         glBindVertexArray(VAO);

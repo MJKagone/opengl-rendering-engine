@@ -294,7 +294,6 @@ int main()
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
     }
-    phongShaders.setFloat("shininess", 140.0f);
     phongShaders.setVec3("dirLight.color", dirLightColor);
     glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, 0.0f) - dirLightPos;
     phongShaders.setVec3("dirLight.direction", lightDirection);
