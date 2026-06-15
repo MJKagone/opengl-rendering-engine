@@ -55,7 +55,6 @@ uniform DirLight dirLight;
 struct PointLight {
 	vec3 color;
 	vec3 position;
-	vec3 ambient;
 	vec3 diffuse;
 	vec3 specular;
 	float constant;
@@ -130,9 +129,6 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffuseTex, ve
 
 vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 diffuseTex, vec3 specularTex, int lightIndex)
 {
-	// Ambient
-	vec3 ambient = light.ambient * diffuseTex;
-
 	// Diffuse
 	vec3 lightDir = normalize(fragPos - light.position);
 	float diffStrength = max(dot(normal, -lightDir), 0.0f);
@@ -147,17 +143,16 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 	float distance = length(light.position - fragPos);
 	float attenuation = 1.0f / (light.constant + light.linear * distance +
 		light.quadratic * (distance * distance));
-	ambient *= attenuation;
 	diffuse *= attenuation;
 	specular *= attenuation;
 
 	// Total
 	if (attenuation < 0.01f) { // avoid unnecessary shadow calculations
-		return light.color * (ambient + diffuse + specular);
+		return light.color * (diffuse + specular);
 	}; 
 	float shadow = calcPointShadow(fragPos, light.position, normal, lightIndex);
-	return light.color * ambient + (1.0f - shadow) * (diffuse + specular);
-	// return light.color * ambient + (diffuse + specular);
+	return (1.0f - shadow) * (diffuse + specular);
+	// return (diffuse + specular);
 
 }
 

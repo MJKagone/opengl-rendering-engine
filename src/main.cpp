@@ -303,7 +303,6 @@ int main()
 
     phongShaders.setVec3("pointLights[0].color", pointLightColor1);
     phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
-    phongShaders.setVec3("pointLights[0].ambient", 0.25f, 0.25f, 0.25f);
     phongShaders.setVec3("pointLights[0].diffuse", 0.5f, 0.5f, 0.5f);
     phongShaders.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
     phongShaders.setFloat("pointLights[0].constant", 1.0f);
@@ -312,7 +311,6 @@ int main()
     
     phongShaders.setVec3("pointLights[1].color", pointLightColor2);
     phongShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
-    phongShaders.setVec3("pointLights[1].ambient", 0.25f, 0.25f, 0.25f);
     phongShaders.setVec3("pointLights[1].diffuse", 0.5f, 0.5f, 0.5f);
     phongShaders.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
     phongShaders.setFloat("pointLights[1].constant", 1.0f);
@@ -321,7 +319,6 @@ int main()
     
     phongShaders.setVec3("pointLights[2].color", pointLightColor3);
     phongShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-    phongShaders.setVec3("pointLights[2].ambient", 0.25f, 0.25f, 0.25f);
     phongShaders.setVec3("pointLights[2].diffuse", 0.5f, 0.5f, 0.5f);
     phongShaders.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
     phongShaders.setFloat("pointLights[2].constant", 1.0f);
@@ -331,7 +328,6 @@ int main()
     // Laptop light
     // phongShaders.setVec3("pointLights[3].color", pointLightColor4);
     // phongShaders.setVec3("pointLights[3].position", pointLightPositions[2]);
-    // phongShaders.setVec3("pointLights[3].ambient", 0.15f, 0.15f, 0.15f);
     // phongShaders.setVec3("pointLights[3].diffuse", 0.3f, 0.3f, 0.3f);
     // phongShaders.setVec3("pointLights[3].specular", 0.1f, 0.1f, 0.1f);
     // phongShaders.setFloat("pointLights[3].constant", 1.0f);
