@@ -206,7 +206,7 @@ private:
         // Try to get the shininess from the material
         if (material->Get(AI_MATKEY_SHININESS, extractedShininess) == AI_SUCCESS) {
             if (extractedShininess > 1.0f) {
-                shininess = extractedShininess;
+                shininess = extractedShininess * 2.2f;
             }
         }
         

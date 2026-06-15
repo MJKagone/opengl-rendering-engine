@@ -11,6 +11,8 @@
 // #include "loadTexture.h"
 #include "Model.hpp"
 
+GLuint loadEquirectangularMap(const char* path);
+
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
 const int SHADOW_WIDTH = 2048;
@@ -157,6 +159,10 @@ int main()
 	Model scene("assets/models/modern-bedroom/source/Bedroom.fbx");
     Model lamp("assets/models/ceiling-fan(2)/source/ceiling_fan.fbx");
 
+    // Load skybox from equirectangular image
+    GLuint skybox = loadEquirectangularMap("assets/skybox/spacebox.png");
+
+
     // Debug line for directional light
     GLuint lineVBO, lineVAO;
     glGenBuffers(1, &lineVBO);
@@ -170,47 +176,47 @@ int main()
 
 	// Light cube vertices
 	float lightVertices[] = {
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
 
-        -0.5f, -0.5f,  0.5f,
-        0.5f, -0.5f,  0.5f,
-        0.5f,  0.5f,  0.5f,
-        0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
 
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
 
-        0.5f,  0.5f,  0.5f,
-        0.5f,  0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f,  0.5f,
-        0.5f,  0.5f,  0.5f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
 
-        -0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f, -0.5f,
-        0.5f, -0.5f,  0.5f,
-        0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
 
-        -0.5f,  0.5f, -0.5f,
-        0.5f,  0.5f, -0.5f,
-        0.5f,  0.5f,  0.5f,
-        0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
 	};
 	GLuint lightVBO, lightVAO;
 	glGenBuffers(1, &lightVBO);
@@ -333,6 +339,9 @@ int main()
     // phongShaders.setFloat("pointLights[3].constant", 1.0f);
     // phongShaders.setFloat("pointLights[3].linear", 0.22f);
     // phongShaders.setFloat("pointLights[3].quadratic", 0.20f);
+
+    skyboxShaders.use();
+    skyboxShaders.setInt("skybox", 0);
 
 
     //////////////////////
@@ -603,6 +612,27 @@ int main()
         glDrawArrays(GL_LINES, 0, 2);
         glBindVertexArray(0);
 
+        ////////////////////////
+        // RENDER SKYBOX LAST //
+        ////////////////////////
+        glDepthFunc(GL_LEQUAL);
+        glDisable(GL_CULL_FACE);
+        skyboxShaders.use();
+        view = glm::mat4(glm::mat3(cam.getViewMatrix()));
+        skyboxShaders.setMat4("view", view);
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        skyboxShaders.setMat4("rotation", rotation);
+        skyboxShaders.setMat4("projection", projection);
+        skyboxShaders.setInt("skybox", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, skybox);
+        glBindVertexArray(lightVAO); // repurpose light cube
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glBindVertexArray(0);
+        glEnable(GL_CULL_FACE);
+        glDepthFunc(GL_LESS);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -642,4 +672,50 @@ GLuint loadCubemap(vector<std::string> faces)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return textureID;
-} 
+}
+
+GLuint loadEquirectangularMap(const char* path)
+{
+    // Equirectangular maps usually require flipping the Y-axis during load
+    stbi_set_flip_vertically_on_load(true); 
+    
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
+    if (data)
+    {
+        GLenum internalFormat = GL_RGB;
+        GLenum dataFormat = GL_RGB;
+        
+        if (nrChannels == 3) {
+            internalFormat = GL_SRGB;
+            dataFormat = GL_RGB;
+        } else if (nrChannels == 4) {
+            internalFormat = GL_SRGB_ALPHA;
+            dataFormat = GL_RGBA;
+        } else if (nrChannels == 1) {
+            internalFormat = GL_RED;
+            dataFormat = GL_RED;
+        }
+
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Failed to load equirectangular map: " << path << std::endl;
+        stbi_image_free(data);
+    }
+    
+    stbi_set_flip_vertically_on_load(false);
+    return textureID;
+}

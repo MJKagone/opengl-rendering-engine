@@ -151,7 +151,7 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 		return light.color * (diffuse + specular);
 	}; 
 	float shadow = calcPointShadow(fragPos, light.position, normal, lightIndex);
-	return (1.0f - shadow) * (diffuse + specular);
+	return light.color * (1.0f - shadow) * (diffuse + specular);
 	// return (diffuse + specular);
 
 }
@@ -169,7 +169,7 @@ void main()
 		normal = normalize(Normal);
 	}
     vec3 diffuseTex = hasDiffuseTexture ? vec3(texture(texture_diffuse1, TexCoords)) : material_diffuseColor;
-	vec3 specularTex = hasSpecularTexture ? vec3(texture(texture_specular1, TexCoords)) : vec3(0.2f);
+	vec3 specularTex = hasSpecularTexture ? vec3(texture(texture_specular1, TexCoords)) : vec3(0.04f);
 	vec3 emissionTex = vec3(texture(texture_emission1, TexCoords));
 
 	// Lighting calculations
