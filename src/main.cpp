@@ -26,8 +26,9 @@ const float ROTATION_SPEED = 275.0f;
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
 
-bool shadersActive = true;
+// bool shadersActive = true;
 bool firstMouse = true;
+bool skyboxToggle = true;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -39,7 +40,8 @@ enum ShaderType {
     CONSTANT,
     DEPTH
 };
-int shaderType = CONSTANT;
+int shaderType = PHONG;
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -72,8 +74,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
     {
-        if (shaderType >= CONSTANT) {shaderType = PHONG;}
-        else {shaderType++;}
+        if (shaderType >= CONSTANT) {shaderType = PHONG;} else {shaderType++;}
+    }
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+    {
+        if (skyboxToggle == false) {skyboxToggle = true;} else {skyboxToggle = false;}
     }
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
@@ -160,7 +165,7 @@ int main()
     Model lamp("assets/models/ceiling-fan(2)/source/ceiling_fan.fbx");
 
     // Load skybox from equirectangular image
-    GLuint skybox = loadEquirectangularMap("assets/skybox/spacebox.png");
+    GLuint skybox = loadEquirectangularMap("assets/skybox/spacebox_8x.png");
 
 
     // Debug line for directional light
@@ -279,8 +284,8 @@ int main()
     // debugShaders.setInt("shadowMap", 0);
 
     // Define light(s)
-    glm::vec3 dirLightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-    glm::vec3 dirLightPos = glm::vec3(2*35.0f, 2*17.0f, 2*(-0.0f));
+    glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
+    glm::vec3 dirLightPos = glm::vec3(2*35.0f, 2*18.0f, 2*(-0.0f));
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.05f, 4.35f, -14.0f),
         glm::vec3(6.8f, 4.35f, -14.0f),
@@ -288,10 +293,10 @@ int main()
         glm::vec3(14.0f, 3.4f, 0.07f)
     };
 
-    glm::vec3 pointLightColor1 = glm::vec3(240/255.0f, 150/255.0f, 80/255.0f);
-    glm::vec3 pointLightColor2 = glm::vec3(240/255.0f, 150/255.0f, 80/255.0f);
-    glm::vec3 pointLightColor3 = glm::vec3(255/255.0f, 200/230.0f, 200/255.0f);
-    glm::vec3 pointLightColor4 = glm::vec3(100/255.0f, 100/255.0f, 255/255.0f);
+    glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 150.0f/255.0f, 80.0f/255.0f);
+    glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 150.0f/255.0f, 80.0f/255.0f);
+    glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/230.0f, 200.0f/255.0f);
+    glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 255.0f/255.0f);
 
     phongShaders.use();
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
@@ -542,9 +547,9 @@ int main()
         ////////////////////////////////////////////
 		// RENDER LIGHT SOURCES FOR VISUALIZATION //
         ////////////////////////////////////////////
-		lightSourceShaders.use();
-		lightSourceShaders.setMat4("projection", projection);
-		lightSourceShaders.setMat4("view", view);
+		// lightSourceShaders.use();
+		// lightSourceShaders.setMat4("projection", projection);
+		// lightSourceShaders.setMat4("view", view);
 
         // Point lights
 		// lightSourceShaders.setVec3("lightColor", pointLightColor1);
@@ -582,56 +587,60 @@ int main()
 
 
         // Directional light
-        lightSourceShaders.setVec3("lightColor", dirLightColor);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, dirLightPos); 
-        // model = glm::scale(model, glm::vec3(1.0f));
-        lightSourceShaders.setMat4("model", model);
-        glBindVertexArray(lightVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // lightSourceShaders.setVec3("lightColor", dirLightColor);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, dirLightPos); 
+        // // model = glm::scale(model, glm::vec3(1.0f));
+        // lightSourceShaders.setMat4("model", model);
+        // glBindVertexArray(lightVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // Debug line
-        glm::vec3 lineStart = dirLightPos;
-        glm::vec3 lineEnd = dirLightPos + glm::normalize(lightDirection) * 5.0f; 
+        // // Debug line
+        // glm::vec3 lineStart = dirLightPos;
+        // glm::vec3 lineEnd = dirLightPos + glm::normalize(lightDirection) * 5.0f; 
 
-        float lineVertices[] = {
-            lineStart.x, lineStart.y, lineStart.z,
-            lineEnd.x, lineEnd.y, lineEnd.z
-        };
+        // float lineVertices[] = {
+        //     lineStart.x, lineStart.y, lineStart.z,
+        //     lineEnd.x, lineEnd.y, lineEnd.z
+        // };
 
-        glBindVertexArray(lineVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(lineVertices), lineVertices);
+        // glBindVertexArray(lineVAO);
+        // glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+        // glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(lineVertices), lineVertices);
 
-        lightSourceShaders.use();
-        lightSourceShaders.setMat4("projection", projection);
-        lightSourceShaders.setMat4("view", view);
-        lightSourceShaders.setMat4("model", glm::mat4(1.0f)); 
-        lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f)); // Yellow line
+        // lightSourceShaders.use();
+        // lightSourceShaders.setMat4("projection", projection);
+        // lightSourceShaders.setMat4("view", view);
+        // lightSourceShaders.setMat4("model", glm::mat4(1.0f)); 
+        // lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f)); // Yellow line
 
-        glDrawArrays(GL_LINES, 0, 2);
-        glBindVertexArray(0);
+        // glDrawArrays(GL_LINES, 0, 2);
+        // glBindVertexArray(0);
 
         ////////////////////////
         // RENDER SKYBOX LAST //
         ////////////////////////
-        glDepthFunc(GL_LEQUAL);
-        glDisable(GL_CULL_FACE);
-        skyboxShaders.use();
-        view = glm::mat4(glm::mat3(cam.getViewMatrix()));
-        skyboxShaders.setMat4("view", view);
-        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        skyboxShaders.setMat4("rotation", rotation);
-        skyboxShaders.setMat4("projection", projection);
-        skyboxShaders.setInt("skybox", 0);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, skybox);
-        glBindVertexArray(lightVAO); // repurpose light cube
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        glBindVertexArray(0);
-        glEnable(GL_CULL_FACE);
-        glDepthFunc(GL_LESS);
+        if (skyboxToggle)
+        {
+            glDepthFunc(GL_LEQUAL);
+            glDisable(GL_CULL_FACE);
+            skyboxShaders.use();
+            view = glm::mat4(glm::mat3(cam.getViewMatrix()));
+            skyboxShaders.setMat4("view", view);
+            glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            skyboxShaders.setMat4("rotation", rotation);
+            skyboxShaders.setMat4("projection", projection);
+            skyboxShaders.setInt("skybox", 0);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, skybox);
+            glBindVertexArray(lightVAO); // repurpose light cube
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+    
+            glBindVertexArray(0);
+            glEnable(GL_CULL_FACE);
+            glDepthFunc(GL_LESS);
+    
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
