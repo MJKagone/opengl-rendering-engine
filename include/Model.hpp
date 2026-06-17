@@ -320,7 +320,7 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
     {
         GLuint textureID;
         glGenTextures(1, &textureID);
-        std::cout << "Loaded texture: " << successfulPath << std::endl;
+        // std::cout << "Loaded texture: " << successfulPath << std::endl;
         GLenum internalFormat;
         GLenum dataFormat;
         
@@ -352,7 +352,7 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
     }
     else
     {
-        std::cout << "Texture failed to load completely. Original path: " << path << std::endl;
+        std::cout << "Texture failed to load. Original path: " << path << std::endl;
         stbi_image_free(data);
         return 0;
     }

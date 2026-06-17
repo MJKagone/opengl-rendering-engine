@@ -1,9 +1,7 @@
 #version 460 core
+
+in vec3 vTexCoords; 
 out vec4 FragColor;
-
-// The 3D position of the skybox cube's vertices
-in vec3 TexCoords; 
-
 uniform sampler2D skybox;
 
 // 1.0 / (2.0 * PI) and 1.0 / PI
@@ -19,7 +17,8 @@ vec2 sampleSphericalMap(vec3 v)
 
 void main()
 {		
-    vec2 uv = sampleSphericalMap(normalize(TexCoords)); // Convert 3D vector to 2D UV
+    // Convert 3D vector to 2D UV
+    vec2 uv = sampleSphericalMap(normalize(vTexCoords)); 
     vec3 color = texture(skybox, uv).rgb;
     
     FragColor = vec4(color, 1.0);

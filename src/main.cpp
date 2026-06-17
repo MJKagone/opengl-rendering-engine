@@ -12,12 +12,13 @@
 #include "Model.hpp"
 
 GLuint loadEquirectangularMap(const char* path);
+glm::vec3 srgbToLinear(glm::vec3 srgb);
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
 const int SHADOW_WIDTH = 2048;
 const int SHADOW_HEIGHT = 2048;
-const int NUM_POINT_LIGHTS = 3;
+const int NUM_POINT_LIGHTS = 4;
 
 const float NEAR_PLANE = 0.5f;
 const float FAR_PLANE = 100.0f;
@@ -25,6 +26,7 @@ const float ROTATION_SPEED = 275.0f;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
+float exposure = 1.0f;
 
 // bool shadersActive = true;
 bool firstMouse = true;
@@ -83,6 +85,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
         std::cout << "Camera position: (" << cam.pos.x << ", " << cam.pos.y << ", " << cam.pos.z << ")\n";
+    }
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+    {
+        exposure += 0.25f;
+    }
+    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+    {
+        exposure -= 0.25f;
     }
 
 }
@@ -149,6 +159,7 @@ int main()
     glEnable(GL_FRAMEBUFFER_SRGB);
 	
 	// Define shaders
+    std::cout << "Compiling shaders...\n";
 	Shader phongShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_phong.glsl");
     Shader constantShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_constant.glsl");
 	Shader lightSourceShaders("shaders/vertex/vs_lightSource.glsl", "shaders/fragment/fs_lightSource.glsl");
@@ -157,16 +168,17 @@ int main()
     Shader pointShadowShaders("shaders/vertex/vs_pointShadows.glsl", "shaders/fragment/fs_pointShadows.glsl", "shaders/geometry/gs_pointShadows.glsl");
     Shader debugShaders("shaders/vertex/vs_debug.glsl", "shaders/fragment/fs_debug.glsl");
     Shader depthShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_depth.glsl");
+    Shader quadShaders("shaders/vertex/vs_quad.glsl", "shaders/fragment/fs_quad.glsl");
 
     //stbi_set_flip_vertically_on_load(true);
 
 	// Load models
+    std::cout << "Loading models...\n";
 	Model scene("assets/models/modern-bedroom/source/Bedroom.fbx");
     Model lamp("assets/models/ceiling-fan(2)/source/ceiling_fan.fbx");
 
     // Load skybox from equirectangular image
     GLuint skybox = loadEquirectangularMap("assets/skybox/spacebox_8x.png");
-
 
     // Debug line for directional light
     GLuint lineVBO, lineVAO;
@@ -181,40 +193,33 @@ int main()
 
 	// Light cube vertices
 	float lightVertices[] = {
-        -1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
 
         -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
         1.0f, -1.0f,  1.0f,
         1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-
         1.0f,  1.0f,  1.0f,
         1.0f,  1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
 
-        -1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
         1.0f, -1.0f,  1.0f,
         -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
 
         -1.0f,  1.0f, -1.0f,
         1.0f,  1.0f, -1.0f,
@@ -222,6 +227,13 @@ int main()
         1.0f,  1.0f,  1.0f,
         -1.0f,  1.0f,  1.0f,
         -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
 	};
 	GLuint lightVBO, lightVAO;
 	glGenBuffers(1, &lightVBO);
@@ -232,7 +244,52 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
 	glEnableVertexAttribArray(0);
 
-    // Generate directional light shadow map FBO and texture
+    // Final render target: screen-filling HDR quad
+    float quadVertices[] = {  
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+        1.0f,  1.0f,  1.0f, 1.0f
+    };	
+    GLuint quadFBO, quadVBO, quadVAO;
+    glGenFramebuffers(1, &quadFBO);
+
+    GLuint quadTexture;
+    glGenTextures(1, &quadTexture);
+    glBindTexture(GL_TEXTURE_2D, quadTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, quadFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, quadTexture, 0);
+
+    GLuint rboDepth;
+    glGenRenderbuffers(1, &rboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Framebuffer not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenBuffers(1, &quadVBO);
+    glGenVertexArrays(1, &quadVAO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) 0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) (2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // Directional light shadow map FBO and texture
     GLuint shadowMapFBO;
     glGenFramebuffers(1, &shadowMapFBO);
     
@@ -253,7 +310,7 @@ int main()
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Generate point light shadow cubemap FBOs and textures
+    // Point light shadow cubemap FBOs and textures
     GLuint shadowCubemapFBO[NUM_POINT_LIGHTS];
     GLuint shadowCubemap[NUM_POINT_LIGHTS];
 
@@ -285,60 +342,66 @@ int main()
 
     // Define light(s)
     glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
+    float dirLightIntensity = 5.0f;
     glm::vec3 dirLightPos = glm::vec3(2*35.0f, 2*18.0f, 2*(-0.0f));
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.05f, 4.35f, -14.0f),
         glm::vec3(6.8f, 4.35f, -14.0f),
         glm::vec3(4.0f, 12.0f, -3.0f),
-        glm::vec3(14.0f, 3.4f, 0.07f)
+        glm::vec3(15.0f, 3.5f, 0.07f)
     };
 
-    glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 150.0f/255.0f, 80.0f/255.0f);
-    glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 150.0f/255.0f, 80.0f/255.0f);
-    glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/230.0f, 200.0f/255.0f);
-    glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 255.0f/255.0f);
+    glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
+    float pointLight1Intensity = 20.0f;
+    glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
+    float pointLight2Intensity = 20.0f;
+    glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
+    float pointLight3Intensity = 100.0f;
+    glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
+    float pointLight4Intensity = 5.0f;
 
     phongShaders.use();
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
     phongShaders.setFloat("far_plane", 25.0f);
+    phongShaders.setFloat("globalAmbient", 0.05f);
     // Initialize all samplerCube uniforms to prevent type conflicts on texture unit 0
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
     }
-    phongShaders.setVec3("dirLight.color", dirLightColor);
+    phongShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
     glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, 0.0f) - dirLightPos;
     phongShaders.setVec3("dirLight.direction", lightDirection);
-    phongShaders.setVec3("dirLight.ambient", 0.25f, 0.25f, 0.25f);
-    phongShaders.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
-    phongShaders.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
+    // phongShaders.setVec3("dirLight.ambient", 0.04f, 0.04f, 0.04f);
+    // phongShaders.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
+    // phongShaders.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
 
-    phongShaders.setVec3("pointLights[0].color", pointLightColor1);
+    phongShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
     phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
-    phongShaders.setVec3("pointLights[0].diffuse", 0.5f, 0.5f, 0.5f);
-    phongShaders.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-    phongShaders.setFloat("pointLights[0].constant", 1.0f);
-    phongShaders.setFloat("pointLights[0].linear", 0.07f);
-    phongShaders.setFloat("pointLights[0].quadratic", 0.017f);
+    // phongShaders.setVec3("pointLights[0].diffuse", 0.5f, 0.5f, 0.5f);
+    // phongShaders.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+    // phongShaders.setFloat("pointLights[0].constant", 1.0f);
+    // phongShaders.setFloat("pointLights[0].linear", 0.07f);
+    // phongShaders.setFloat("pointLights[0].quadratic", 0.017f);
     
-    phongShaders.setVec3("pointLights[1].color", pointLightColor2);
+    phongShaders.setVec3("pointLights[1].color", srgbToLinear(pointLightColor2) * pointLight2Intensity);
     phongShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
-    phongShaders.setVec3("pointLights[1].diffuse", 0.5f, 0.5f, 0.5f);
-    phongShaders.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
-    phongShaders.setFloat("pointLights[1].constant", 1.0f);
-    phongShaders.setFloat("pointLights[1].linear", 0.07f);
-    phongShaders.setFloat("pointLights[1].quadratic", 0.017f);
+    // phongShaders.setVec3("pointLights[1].diffuse", 0.5f, 0.5f, 0.5f);
+    // phongShaders.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
+    // phongShaders.setFloat("pointLights[1].constant", 1.0f);
+    // phongShaders.setFloat("pointLights[1].linear", 0.07f);
+    // phongShaders.setFloat("pointLights[1].quadratic", 0.017f);
     
-    phongShaders.setVec3("pointLights[2].color", pointLightColor3);
+    phongShaders.setVec3("pointLights[2].color", srgbToLinear(pointLightColor3) * pointLight3Intensity);
     phongShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-    phongShaders.setVec3("pointLights[2].diffuse", 0.5f, 0.5f, 0.5f);
-    phongShaders.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
-    phongShaders.setFloat("pointLights[2].constant", 1.0f);
-    phongShaders.setFloat("pointLights[2].linear", 0.022f);
-    phongShaders.setFloat("pointLights[2].quadratic", 0.0019f);
+    // phongShaders.setVec3("pointLights[2].diffuse", 0.5f, 0.5f, 0.5f);
+    // phongShaders.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
+    // phongShaders.setFloat("pointLights[2].constant", 1.0f);
+    // phongShaders.setFloat("pointLights[2].linear", 0.022f);
+    // phongShaders.setFloat("pointLights[2].quadratic", 0.0019f);
 
     // Laptop light
-    // phongShaders.setVec3("pointLights[3].color", pointLightColor4);
-    // phongShaders.setVec3("pointLights[3].position", pointLightPositions[2]);
+    phongShaders.setVec3("pointLights[3].color", srgbToLinear(pointLightColor4) * pointLight4Intensity);
+    phongShaders.setVec3("pointLights[3].position", pointLightPositions[3]);
     // phongShaders.setVec3("pointLights[3].diffuse", 0.3f, 0.3f, 0.3f);
     // phongShaders.setVec3("pointLights[3].specular", 0.1f, 0.1f, 0.1f);
     // phongShaders.setFloat("pointLights[3].constant", 1.0f);
@@ -348,7 +411,8 @@ int main()
     skyboxShaders.use();
     skyboxShaders.setInt("skybox", 0);
 
-
+    
+    
     //////////////////////
     // MAIN RENDER LOOP //
     //////////////////////
@@ -356,6 +420,8 @@ int main()
 	{
         // Input
 		processInput(window);
+        quadShaders.use();
+        quadShaders.setFloat("exposure", exposure);
         
         // Clear background
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -405,7 +471,7 @@ int main()
             phongShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
             glActiveTexture(GL_TEXTURE9);
             glBindTexture(GL_TEXTURE_2D, shadowMap);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            // glBindFramebuffer(GL_FRAMEBUFFER, 0); // unnecessary?
 
             // 1.2: Render point light shadow cubemaps
             for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
@@ -463,14 +529,14 @@ int main()
                 glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
             }
 
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glCullFace(GL_BACK);
         }
         
-        //////////////////////////////////////////////////////////
-        // 2. PASS: RENDER SCENE USING THE GENERATED SHADOW MAP //
-        //////////////////////////////////////////////////////////
+        ///////////////////////////////////
+        // 2. PASS: RENDER SCENE TO QUAD //
+        ///////////////////////////////////
         glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        glBindFramebuffer(GL_FRAMEBUFFER, quadFBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.worldUp);
@@ -520,10 +586,10 @@ int main()
             scene.Draw(depthShaders);
         }
 
-        model =  glm::mat4(1.0f);
+        model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(4.0f, 16.2f, -3.0f));
         model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
-        model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float) glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
         
         normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
         if (shaderType == PHONG) {
@@ -547,9 +613,9 @@ int main()
         ////////////////////////////////////////////
 		// RENDER LIGHT SOURCES FOR VISUALIZATION //
         ////////////////////////////////////////////
-		// lightSourceShaders.use();
-		// lightSourceShaders.setMat4("projection", projection);
-		// lightSourceShaders.setMat4("view", view);
+		lightSourceShaders.use();
+		lightSourceShaders.setMat4("projection", projection);
+		lightSourceShaders.setMat4("view", view);
 
         // Point lights
 		// lightSourceShaders.setVec3("lightColor", pointLightColor1);
@@ -617,9 +683,9 @@ int main()
         // glDrawArrays(GL_LINES, 0, 2);
         // glBindVertexArray(0);
 
-        ////////////////////////
-        // RENDER SKYBOX LAST //
-        ////////////////////////
+        ////////////////////////////////////
+        // 3. PASS: RENDER SKYBOX TO QUAD //
+        ////////////////////////////////////
         if (skyboxToggle)
         {
             glDepthFunc(GL_LEQUAL);
@@ -636,11 +702,26 @@ int main()
             glBindVertexArray(lightVAO); // repurpose light cube
             glDrawArrays(GL_TRIANGLES, 0, 36);
     
-            glBindVertexArray(0);
+            // glBindVertexArray(0); // unnecessary?
             glEnable(GL_CULL_FACE);
             glDepthFunc(GL_LESS);
     
         }
+
+        ////////////////////////////////////
+        // 4. PASS: RENDER QUAD TO SCREEN //
+        ////////////////////////////////////
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        quadShaders.use();
+        glBindVertexArray(quadVAO);
+        glDisable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, quadTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glEnable(GL_DEPTH_TEST);
+
+
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -727,4 +808,8 @@ GLuint loadEquirectangularMap(const char* path)
     
     stbi_set_flip_vertically_on_load(false);
     return textureID;
+}
+
+glm::vec3 srgbToLinear(glm::vec3 srgb) {
+    return glm::vec3(pow(srgb.r, 2.2f), pow(srgb.g, 2.2f), pow(srgb.b, 2.2f));
 }

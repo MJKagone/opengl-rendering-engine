@@ -6,25 +6,26 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 
 ## Features
 
-- [x] **Model loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp (much to improve here, mostly copy-pasted from the tutorial...)
+- [x] **Model loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp
 - [x] **Lighting**:
   * Directional light
   * Multiple point lights with configurable attenuation
-  * Blinn-Phong shading
+  * Blinn-Phong shading model
 - [x] **Shadow mapping**:
   * Calculates directional light shadows using 2D depth maps
   * Calculates omnidirectional point light shadows using depth cubemaps and geometry shaders
   * Percentage-Closer Filtering (PCF) for softer shadow edges
+- [x] **Skybox**: Equirectangular skybox with seamless cubemap sampling
 - [x] **Camera system**: Interactive 3D fly-camera with zoom
 - [x] **Interactive shaders**: Toggle between Phong, Constant and Depth shaders at runtime
 - [x] **Multisample anti-aliasing**: 4x MSAA for smoother edges
+- [x] **Gamma correction & HDR**: Gamma correction and high dynamic range rendering with tone mapping
 
 ## Future Plans
+- [ ] **PBR**: More advanced shading models TBD
+- [ ] **Bloom**: Add bloom post-processing effects for light sources
 - [ ] **Saving/loading scenes**: Implement a scene graph and serialization system to save and load complex scenes
 - [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
-- [ ] **More robust model loading**: Handle missing textures etc.
-- [ ] **HDR & bloom**: Implement high dynamic range rendering and bloom post-processing effects for light sources
-- [ ] **PBR**: More advanced shading models TBD
 
 ## Controls
 
@@ -34,12 +35,13 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 | **Mouse move** | Look around (yaw/pitch) |
 | **Mouse scroll**| Zoom (adjust field of view) |
 | **L** | Toggle active shader (Phong / Constant / Depth*) (*not included in demo) |
+| **B** | Toggle skybox rendering |
 | **Space** | Print current camera position to standard output (helps with object/light placement) |
 | **Escape** | Close the application | 
 
 ## Dependencies
 
-* **OpenGL 4.6** (Core Profile)
+* **OpenGL 4.6** (3.3 should also work for now)
 * **GLFW**: Window creation and input handling
 * **GLAD**: OpenGL function pointer loading
 * **GLM**: OpenGL Mathematics library for vector and matrix operations

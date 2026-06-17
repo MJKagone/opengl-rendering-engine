@@ -1,9 +1,9 @@
 #version 460 core
 
+out vec4 FragColor;
+
 uniform float near;
 uniform float far;
-
-out vec4 FragColor;
 
 float linearizeDepth(float depth) 
 {
