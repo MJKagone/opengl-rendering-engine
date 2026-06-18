@@ -62,6 +62,8 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 {
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = projCoords * 0.5f + 0.5f;
+	if (projCoords.z > 1.0f) // note: I had this as .x for some reason?
+		return 0.0f;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
 	float bias = max(0.001f * (1.0f - dot(normal, -lightDir)), 0.0001f);
@@ -76,8 +78,6 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 		}
 	}
 	shadow /= 25.0f;
-	if (projCoords.z > 1.0f) // note: I had this as .x for some reason?
-		shadow = 0.0f;
 	return shadow;
 }
 
@@ -88,7 +88,7 @@ float calcPointShadow(vec3 fragPos, vec3 lightPos, vec3 normal, int lightIndex)
     float bias = 0.01f; 
     float shadow = 0.0f;
     float diskRadius = 0.05f;
-    int samples = 20;
+    int samples = 16;
 
     for(int i = 0; i < samples; ++i)
     {
@@ -190,12 +190,19 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     // Attenuation (physical)
     float distance = length(light.position - fragPos);
     float attenuation = 1.0f / ((distance * distance) + 1.0f);
+
+	// Early exit for performance
+	vec3 litContribution = light.color * attenuation;
+	if (attenuation < 0.005f)
+	{
+		return litContribution * (diffStrength * diffuseTex + specStrength * specularTex);
+	}
     
     // Shadow
     float shadow = calcPointShadow(fragPos, light.position, normal, lightIndex);
     
     // Total
-    vec3 incomingLight = light.color * attenuation * (1.0f - shadow);
+	vec3 incomingLight = litContribution * (1.0f - shadow);
     vec3 diffuseResult = incomingLight * diffStrength * diffuseTex;
     vec3 specularResult = incomingLight * specStrength * specularTex;
 

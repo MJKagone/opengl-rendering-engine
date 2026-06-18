@@ -14,11 +14,18 @@
 GLuint loadEquirectangularMap(const char* path);
 glm::vec3 srgbToLinear(glm::vec3 srgb);
 
+bool firstMouse = true;
+bool skyboxToggle = true;
+bool fpsToggle = true;
+bool vSyncToggle = true;
+
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
 const int SHADOW_WIDTH = 2048;
 const int SHADOW_HEIGHT = 2048;
 const int NUM_POINT_LIGHTS = 4;
+
+int frameCount = 0;
 
 const float NEAR_PLANE = 0.5f;
 const float FAR_PLANE = 100.0f;
@@ -27,13 +34,11 @@ const float ROTATION_SPEED = 275.0f;
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
 float exposure = 1.0f;
-
-// bool shadersActive = true;
-bool firstMouse = true;
-bool skyboxToggle = true;
-
+float fpsTimer = 0.0f;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+
 
 Camera cam = Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -88,11 +93,28 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     if (key == GLFW_KEY_UP && action == GLFW_PRESS)
     {
-        exposure += 0.25f;
+        exposure += 0.5f;
     }
     if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
     {
-        exposure -= 0.25f;
+        exposure -= 0.5f;
+    }
+    if (key == GLFW_KEY_F && action == GLFW_PRESS)
+    {
+        if (fpsToggle == false) {fpsToggle = true;} else {fpsToggle = false;}
+    }
+    if (key == GLFW_KEY_V && action == GLFW_PRESS)
+    {
+        if (vSyncToggle == true)
+        {
+            glfwSwapInterval(0);
+            vSyncToggle = false;
+        }
+        else
+        {
+            glfwSwapInterval(1);
+            vSyncToggle = true;
+        }
     }
 
 }
@@ -345,10 +367,10 @@ int main()
     float dirLightIntensity = 5.0f;
     glm::vec3 dirLightPos = glm::vec3(2*35.0f, 2*18.0f, 2*(-0.0f));
     glm::vec3 pointLightPositions[] = {
-        glm::vec3(-8.05f, 4.35f, -14.0f),
-        glm::vec3(6.8f, 4.35f, -14.0f),
-        glm::vec3(4.0f, 12.0f, -3.0f),
-        glm::vec3(15.0f, 3.5f, 0.07f)
+        glm::vec3(-8.05f, 4.35f, -14.0f), // left bedside lamp
+        glm::vec3(6.8f, 4.35f, -14.0f), // right bedside lamp
+        glm::vec3(4.0f, 12.0f, -3.0f), // ceiling fan light
+        glm::vec3(15.0f, 3.5f, 0.07f) // laptop light
     };
 
     glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
@@ -411,8 +433,6 @@ int main()
     skyboxShaders.use();
     skyboxShaders.setInt("skybox", 0);
 
-    
-    
     //////////////////////
     // MAIN RENDER LOOP //
     //////////////////////
@@ -431,6 +451,16 @@ int main()
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        // FPS counter
+        frameCount++;
+        fpsTimer += deltaTime;
+        if (fpsTimer >= 0.2f && fpsToggle)
+        {
+            std::cout << "\rFPS: " << round(frameCount / fpsTimer) << std::flush;
+            frameCount = 0;
+            fpsTimer = 0.0f;
+        }
 
         /////////////////////////////////////////////////////////
         // 1. PASS: RENDER SHADOW MAP FROM LIGHTS' PERSPECTIVE //
@@ -725,6 +755,11 @@ int main()
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+    }
+
+    if (fpsToggle)
+    {
+        std::cout << std::endl;
     }
 
     glfwTerminate();
