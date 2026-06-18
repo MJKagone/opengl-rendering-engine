@@ -37,6 +37,9 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 | **L** | Toggle active shader (Phong / Constant / Depth*) (*not included in demo) |
 | **B** | Toggle skybox rendering |
 | **Space** | Print current camera position to standard output (helps with object/light placement) |
+| **F** | Toggle FPS counter |
+| **V** | Toggle V-Sync (FPS cap) |
+| **Up/down** | Increase/decrease camera exposure (HDR) |
 | **Escape** | Close the application | 
 
 ## Dependencies
