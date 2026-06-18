@@ -21,8 +21,8 @@ bool vSyncToggle = true;
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
-const int SHADOW_WIDTH = 2048;
-const int SHADOW_HEIGHT = 2048;
+const int SHADOW_WIDTH = 1024;
+const int SHADOW_HEIGHT = 1024;
 const int NUM_POINT_LIGHTS = 4;
 
 int frameCount = 0;
@@ -98,6 +98,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
     {
         exposure -= 0.5f;
+        if (exposure < 0.5f) {exposure = 0.5f;}
     }
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
     {
@@ -191,6 +192,17 @@ int main()
     Shader debugShaders("shaders/vertex/vs_debug.glsl", "shaders/fragment/fs_debug.glsl");
     Shader depthShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_depth.glsl");
     Shader quadShaders("shaders/vertex/vs_quad.glsl", "shaders/fragment/fs_quad.glsl");
+
+    // Pre-allocate uniform strings
+    std::string shadowMatrixNames[6];
+    for (int j = 0; j < 6; ++j) {
+        shadowMatrixNames[j] = "shadowMatrices[" + std::to_string(j) + "]";
+    }
+
+    std::string shadowCubemapNames[NUM_POINT_LIGHTS];
+    for (int i = 0; i < NUM_POINT_LIGHTS; ++i) {
+        shadowCubemapNames[i] = "shadowCubemaps[" + std::to_string(i) + "]";
+    }
 
     //stbi_set_flip_vertically_on_load(true);
 
@@ -362,6 +374,13 @@ int main()
     // debugShaders.use();
     // debugShaders.setInt("shadowMap", 0);
 
+    // Define model transformations
+    glm::vec3 scenePos = glm::vec3(0.0f, -2.0f, 0.0f);
+    glm::vec3 sceneScale = glm::vec3(0.03f);
+    glm::vec3 lampPos = glm::vec3(4.0f, 16.2f, -3.0f);
+    glm::vec3 lampScale = glm::vec3(0.075f);
+
+
     // Define light(s)
     glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
     float dirLightIntensity = 5.0f;
@@ -369,7 +388,7 @@ int main()
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.05f, 4.35f, -14.0f), // left bedside lamp
         glm::vec3(6.8f, 4.35f, -14.0f), // right bedside lamp
-        glm::vec3(4.0f, 12.0f, -3.0f), // ceiling fan light
+        glm::vec3(4.0f, 12.2f, -3.0f), // ceiling fan light
         glm::vec3(15.0f, 3.5f, 0.07f) // laptop light
     };
 
@@ -386,49 +405,28 @@ int main()
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
     phongShaders.setFloat("far_plane", 25.0f);
     phongShaders.setFloat("globalAmbient", 0.05f);
+
     // Initialize all samplerCube uniforms to prevent type conflicts on texture unit 0
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
     }
+    
     phongShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
     glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, 0.0f) - dirLightPos;
     phongShaders.setVec3("dirLight.direction", lightDirection);
-    // phongShaders.setVec3("dirLight.ambient", 0.04f, 0.04f, 0.04f);
-    // phongShaders.setVec3("dirLight.diffuse", 0.5f, 0.5f, 0.5f);
-    // phongShaders.setVec3("dirLight.specular", 1.0f, 1.0f, 1.0f);
 
     phongShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
     phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
-    // phongShaders.setVec3("pointLights[0].diffuse", 0.5f, 0.5f, 0.5f);
-    // phongShaders.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-    // phongShaders.setFloat("pointLights[0].constant", 1.0f);
-    // phongShaders.setFloat("pointLights[0].linear", 0.07f);
-    // phongShaders.setFloat("pointLights[0].quadratic", 0.017f);
     
     phongShaders.setVec3("pointLights[1].color", srgbToLinear(pointLightColor2) * pointLight2Intensity);
     phongShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
-    // phongShaders.setVec3("pointLights[1].diffuse", 0.5f, 0.5f, 0.5f);
-    // phongShaders.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
-    // phongShaders.setFloat("pointLights[1].constant", 1.0f);
-    // phongShaders.setFloat("pointLights[1].linear", 0.07f);
-    // phongShaders.setFloat("pointLights[1].quadratic", 0.017f);
     
     phongShaders.setVec3("pointLights[2].color", srgbToLinear(pointLightColor3) * pointLight3Intensity);
     phongShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-    // phongShaders.setVec3("pointLights[2].diffuse", 0.5f, 0.5f, 0.5f);
-    // phongShaders.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
-    // phongShaders.setFloat("pointLights[2].constant", 1.0f);
-    // phongShaders.setFloat("pointLights[2].linear", 0.022f);
-    // phongShaders.setFloat("pointLights[2].quadratic", 0.0019f);
 
     // Laptop light
     phongShaders.setVec3("pointLights[3].color", srgbToLinear(pointLightColor4) * pointLight4Intensity);
     phongShaders.setVec3("pointLights[3].position", pointLightPositions[3]);
-    // phongShaders.setVec3("pointLights[3].diffuse", 0.3f, 0.3f, 0.3f);
-    // phongShaders.setVec3("pointLights[3].specular", 0.1f, 0.1f, 0.1f);
-    // phongShaders.setFloat("pointLights[3].constant", 1.0f);
-    // phongShaders.setFloat("pointLights[3].linear", 0.22f);
-    // phongShaders.setFloat("pointLights[3].quadratic", 0.20f);
 
     skyboxShaders.use();
     skyboxShaders.setInt("skybox", 0);
@@ -457,7 +455,7 @@ int main()
         fpsTimer += deltaTime;
         if (fpsTimer >= 0.2f && fpsToggle)
         {
-            std::cout << "\rFPS: " << round(frameCount / fpsTimer) << std::flush;
+            std::cout << "\rFPS: " << round(frameCount / fpsTimer) << "   " << std::flush;
             frameCount = 0;
             fpsTimer = 0.0f;
         }
@@ -484,14 +482,14 @@ int main()
             
             // Render scene with loaded models
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-            model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+            model = glm::translate(model, scenePos);
+            model = glm::scale(model, sceneScale);
             dirShadowShaders.setMat4("model", model);
             scene.Draw(dirShadowShaders);
 
             model =  glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(4.0f, 15.7f, -3.0f));
-            model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
+            model = glm::translate(model, lampPos);
+            model = glm::scale(model, lampScale);
             model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
             dirShadowShaders.setMat4("model", model);
             lamp.Draw(dirShadowShaders);
@@ -527,9 +525,10 @@ int main()
                     glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0)));
                 
                 pointShadowShaders.use();
-                for (int j = 0; j < 6; ++j)                {
-                    pointShadowShaders.setMat4("shadowMatrices[" + std::to_string(j) + "]", shadowTransforms[j]);
+                for (int j = 0; j < 6; ++j) {
+                    pointShadowShaders.setMat4(shadowMatrixNames[j], shadowTransforms[j]);
                 }
+
                 pointShadowShaders.setFloat("far", far);
                 pointShadowShaders.setVec3("lightPos", lightPos);
 
@@ -540,21 +539,21 @@ int main()
 
                 // Render scene with loaded models
                 model = glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-                model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+                model = glm::translate(model, scenePos);
+                model = glm::scale(model, sceneScale);
                 // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
                 pointShadowShaders.setMat4("model", model);
                 scene.Draw(pointShadowShaders);
 
                 model =  glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(4.0f, 16.2f, -1.67f));
-                model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
+                model = glm::translate(model, lampPos);
+                model = glm::scale(model, lampScale);
                 model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
                 pointShadowShaders.setMat4("model", model);
                 lamp.Draw(pointShadowShaders);
 
                 phongShaders.use();
-                phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i); // 2 -> 10, Gemini suggestion
+                phongShaders.setInt(shadowCubemapNames[i], 10 + i);
                 glActiveTexture(GL_TEXTURE10 + i);
                 glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
             }
@@ -593,8 +592,8 @@ int main()
         }
 
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(0.03f, 0.03f, 0.03f));
+        model = glm::translate(model, scenePos);
+        model = glm::scale(model, sceneScale);
         // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
@@ -617,8 +616,8 @@ int main()
         }
 
         model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(4.0f, 16.2f, -3.0f));
-        model = glm::scale(model, glm::vec3(0.075f, 0.075f, 0.075f));
+        model = glm::translate(model, lampPos);
+        model = glm::scale(model, lampScale);
         model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float) glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
         
         normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
@@ -665,13 +664,13 @@ int main()
 		// glBindVertexArray(lightVAO);
 		// glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        // lightSourceShaders.setVec3("lightColor", pointLightColor3);
-        // model = glm::mat4(1.0f);
-        // model = glm::translate(model, pointLightPositions[2]);
-        // model = glm::scale(model, glm::vec3(0.2f));
-        // lightSourceShaders.setMat4("model", model);
-        // glBindVertexArray(lightVAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        lightSourceShaders.setVec3("lightColor", pointLightColor3);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, pointLightPositions[2]);
+        model = glm::scale(model, glm::vec3(0.2f));
+        lightSourceShaders.setMat4("model", model);
+        glBindVertexArray(lightVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // lightSourceShaders.setVec3("lightColor", pointLightColor4);
         // model = glm::mat4(1.0f);
