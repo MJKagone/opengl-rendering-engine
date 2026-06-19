@@ -21,8 +21,10 @@ bool vSyncToggle = true;
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
-const int SHADOW_WIDTH = 1024;
-const int SHADOW_HEIGHT = 1024;
+const int DIR_SHADOW_WIDTH = 2048;
+const int DIR_SHADOW_HEIGHT = 2048;
+const int POINT_SHADOW_WIDTH = 1024;
+const int POINT_SHADOW_HEIGHT = 1024;
 const int NUM_POINT_LIGHTS = 4;
 
 int frameCount = 0;
@@ -330,7 +332,7 @@ int main()
     GLuint shadowMap;
     glGenTextures(1, &shadowMap);
     glBindTexture(GL_TEXTURE_2D, shadowMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -356,7 +358,7 @@ int main()
         
         for (int j = 0; j < 6; ++j)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_DEPTH_COMPONENT, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         }
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -475,7 +477,7 @@ int main()
             dirShadowShaders.use();
             dirShadowShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
             
-            glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+            glViewport(0, 0, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT);
             glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
             glClear(GL_DEPTH_BUFFER_BIT);
             glActiveTexture(GL_TEXTURE0);
@@ -505,7 +507,7 @@ int main()
             for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 
                 glm::vec3 lightPos = pointLightPositions[i];
-                float aspect = (float) SHADOW_WIDTH / (float) SHADOW_HEIGHT;
+                float aspect = (float) POINT_SHADOW_WIDTH / (float) POINT_SHADOW_HEIGHT;
                 float near = 0.1f;
                 float far = 25.0f;
                 glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, near, far);
@@ -532,7 +534,7 @@ int main()
                 pointShadowShaders.setFloat("far", far);
                 pointShadowShaders.setVec3("lightPos", lightPos);
 
-                glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+                glViewport(0, 0, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT);
                 glBindFramebuffer(GL_FRAMEBUFFER, shadowCubemapFBO[i]);
                 glClear(GL_DEPTH_BUFFER_BIT);
                 glActiveTexture(GL_TEXTURE0);
@@ -664,13 +666,13 @@ int main()
 		// glBindVertexArray(lightVAO);
 		// glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        lightSourceShaders.setVec3("lightColor", pointLightColor3);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, pointLightPositions[2]);
-        model = glm::scale(model, glm::vec3(0.2f));
-        lightSourceShaders.setMat4("model", model);
-        glBindVertexArray(lightVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // lightSourceShaders.setVec3("lightColor", pointLightColor3);
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, pointLightPositions[2]);
+        // model = glm::scale(model, glm::vec3(0.2f));
+        // lightSourceShaders.setMat4("model", model);
+        // glBindVertexArray(lightVAO);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // lightSourceShaders.setVec3("lightColor", pointLightColor4);
         // model = glm::mat4(1.0f);
