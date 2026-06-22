@@ -1,19 +1,31 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <iostream>
 #include <math.h>
-#include "Camera.hpp"
-#include "Shader.hpp"
+#include <ctime>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <ctime>
-// #include "loadTexture.h"
+#include "Camera.hpp"
+#include "Shader.hpp"
 #include "Model.hpp"
 
+// Function declarations
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow* window, double xPos, double yPos);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void processInput(GLFWwindow* window);
+void generateCube(GLuint &VAO, GLuint &VBO);
+void generateQuad(GLuint &FBO, GLuint &VBO, GLuint &VAO, GLuint &texture);
+void generateLine(GLuint &VBO, GLuint &VAO);
+void generateSkybox(GLuint &VAO, GLuint &VBO, GLuint &equirectangularMap, GLuint &cubemap, GLuint &captureFBO, Shader &er2cubemapShader);
+void generateShadowMap(GLuint &FBO, GLuint &texture);
+void generateShadowCubemap(GLuint &shadowCubemapFBO, GLuint &shadowCubemap);
 GLuint loadEquirectangularMap(const char* path);
 glm::vec3 srgbToLinear(glm::vec3 srgb);
 
+// Global variables
 bool firstMouse = true;
 bool skyboxToggle = true;
 bool fpsToggle = true;
@@ -53,114 +65,6 @@ enum ShaderType {
     DEPTH
 };
 int shaderType = PHONG;
-
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
-
-void mouse_callback(GLFWwindow* window, double xPos, double yPos)
-{
-    if (firstMouse)
-    {
-        lastX = xPos;
-        lastY = yPos;
-        firstMouse = false;
-    }
-
-    float xOffset = xPos - lastX;
-    float yOffset = lastY - yPos; // y-axis is reversed
-    lastX = xPos;
-    lastY = yPos;
-
-    cam.processMouse(xOffset, yOffset);
-}
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    cam.processScroll((float) yoffset);
-}
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (key == GLFW_KEY_L && action == GLFW_PRESS)
-    {
-        if (shaderType >= CONSTANT) {shaderType = PHONG;} else {shaderType++;}
-    }
-    if (key == GLFW_KEY_B && action == GLFW_PRESS)
-    {
-        if (skyboxToggle == false) {skyboxToggle = true;} else {skyboxToggle = false;}
-    }
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-    {
-        std::cout << "Camera position: (" << cam.pos.x << ", " << cam.pos.y << ", " << cam.pos.z << ")\n";
-    }
-    if (key == GLFW_KEY_UP && action == GLFW_PRESS)
-    {
-        exposure += 0.5f;
-    }
-    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
-    {
-        exposure -= 0.5f;
-        if (exposure < 0.5f) {exposure = 0.5f;}
-    }
-    if (key == GLFW_KEY_F && action == GLFW_PRESS)
-    {
-        if (fpsToggle == false) {fpsToggle = true;} else {fpsToggle = false;}
-    }
-    if (key == GLFW_KEY_V && action == GLFW_PRESS)
-    {
-        if (vSyncToggle == true)
-        {
-            glfwSwapInterval(0);
-            vSyncToggle = false;
-        }
-        else
-        {
-            glfwSwapInterval(1);
-            vSyncToggle = true;
-        }
-    }
-    if (key == GLFW_KEY_PERIOD && action == GLFW_PRESS)
-    {
-        if (debugToggle == false) {debugToggle = true;} else {debugToggle = false;}
-    }
-    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
-    {
-        ;
-    }
-    if (key == GLFW_KEY_2 && action == GLFW_PRESS)
-    {
-        ;
-    }
-    if (key == GLFW_KEY_3 && action == GLFW_PRESS)
-    {
-        ;
-    }
-    if (key == GLFW_KEY_4 && action == GLFW_PRESS)
-    {
-        ;
-    }
-    if (key == GLFW_KEY_5 && action == GLFW_PRESS)
-    {
-        ;
-    }
-
-}
-
-void processInput(GLFWwindow* window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {cam.processKeyboard(Camera::FORWARD, deltaTime);}
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {cam.processKeyboard(Camera::BACKWARD, deltaTime);}
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {cam.processKeyboard(Camera::LEFT, deltaTime);}
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {cam.processKeyboard(Camera::RIGHT, deltaTime);}
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {cam.processKeyboard(Camera::UP, deltaTime);}
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {cam.processKeyboard(Camera::DOWN, deltaTime);}
-}
 
 int main()
 {
@@ -247,186 +151,25 @@ int main()
     Model lamp("assets/models/ceiling-fan/source/ceiling_fan.fbx");
     
     // Light cube vertices
-    float cubeVertices[] = {
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-        1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f
-    };
     GLuint cubeVBO, cubeVAO;
-    glGenBuffers(1, &cubeVBO);
-    glGenVertexArrays(1, &cubeVAO);
-    glBindVertexArray(cubeVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
-    glEnableVertexAttribArray(0);
+    generateCube(cubeVBO, cubeVAO);
 
     // Skybox from equirectangular image
     GLuint skyboxEquirectangular = loadEquirectangularMap("assets/skybox/spacebox_8x.png");
-    GLuint skyboxCubemap;
-
-    glGenTextures(1, &skyboxCubemap);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxCubemap);
-
-    for (int i = 0; i < 6; ++i)
-    {
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, SKYBOX_WIDTH, SKYBOX_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    GLuint captureFBO;
-    glGenFramebuffers(1, &captureFBO);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-
-    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-    glm::mat4 captureViews[] = 
-    {
-        glm::lookAt(glm::vec3(0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // +X
-        glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // -X
-        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)), // +Y
-        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)), // -Y
-        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // +Z
-        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))  // -Z
-    };
-    
-    er2cubemapShaders.use();
-    er2cubemapShaders.setInt("equirectangularMap", 0);
-    er2cubemapShaders.setMat4("projection", captureProjection);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, skyboxEquirectangular);
-
-    glViewport(0, 0, SKYBOX_WIDTH, SKYBOX_HEIGHT);
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
-
-    for (int i = 0; i < 6; ++i)
-    {
-        er2cubemapShaders.setMat4("view", captureViews[i]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, skyboxCubemap, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBindVertexArray(cubeVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-    }
+    GLuint skyboxCubemap, captureFBO;
+    generateSkybox(cubeVBO, cubeVAO, skyboxEquirectangular, skyboxCubemap, captureFBO, er2cubemapShaders);
 
     // Debug line for directional light
     GLuint lineVBO, lineVAO;
-    glGenBuffers(1, &lineVBO);
-    glGenVertexArrays(1, &lineVAO);
-    glBindVertexArray(lineVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), NULL, GL_DYNAMIC_DRAW); 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glBindVertexArray(0);
+    generateLine(lineVBO, lineVAO);
 
     // Final render target: screen-filling HDR quad
-    float quadVertices[] = {  
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-        1.0f, -1.0f,  1.0f, 0.0f,
-
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        1.0f, -1.0f,  1.0f, 0.0f,
-        1.0f,  1.0f,  1.0f, 1.0f
-    };	
-    GLuint quadFBO, quadVBO, quadVAO;
-    glGenFramebuffers(1, &quadFBO);
-
-    GLuint quadTexture;
-    glGenTextures(1, &quadTexture);
-    glBindTexture(GL_TEXTURE_2D, quadTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, quadFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, quadTexture, 0);
-
-    GLuint rboDepth;
-    glGenRenderbuffers(1, &rboDepth);
-    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WINDOW_WIDTH, WINDOW_HEIGHT);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "Framebuffer not complete!" << std::endl;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    glGenBuffers(1, &quadVBO);
-    glGenVertexArrays(1, &quadVAO);
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) 0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) (2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    GLuint quadFBO, quadVBO, quadVAO, quadTexture;
+    generateQuad(quadFBO, quadVBO, quadVAO, quadTexture);
 
     // Directional light shadow map FBO and texture
-    GLuint shadowMapFBO;
-    glGenFramebuffers(1, &shadowMapFBO);
-    
-    GLuint shadowMap;
-    glGenTextures(1, &shadowMap);
-    glBindTexture(GL_TEXTURE_2D, shadowMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    GLuint shadowMapFBO, shadowMap;
+    generateShadowMap(shadowMapFBO, shadowMap);
 
     // Point light shadow cubemap FBOs and textures
     GLuint shadowCubemapFBO[NUM_POINT_LIGHTS];
@@ -434,29 +177,8 @@ int main()
 
     for (int i = 0; i < NUM_POINT_LIGHTS; ++i)
     {
-        glGenFramebuffers(1, &shadowCubemapFBO[i]);
-        glGenTextures(1, &shadowCubemap[i]);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
-        
-        for (int j = 0; j < 6; ++j)
-        {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_DEPTH_COMPONENT, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-        }
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, shadowCubemapFBO[i]);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowCubemap[i], 0);
-        glDrawBuffer(GL_NONE);
-        glReadBuffer(GL_NONE);
+        generateShadowCubemap(shadowCubemapFBO[i], shadowCubemap[i]);
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // debugShaders.use();
-    // debugShaders.setInt("shadowMap", 0);
 
     // Define model transformations
     glm::vec3 scenePos = glm::vec3(0.0f, -2.0f, 0.0f);
@@ -790,7 +512,7 @@ int main()
             lightSourceShaders.setMat4("projection", projection);
             lightSourceShaders.setMat4("view", view);
             lightSourceShaders.setMat4("model", glm::mat4(1.0f)); 
-            lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f)); // Yellow line
+            lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f));
 
             glDrawArrays(GL_LINES, 0, 2);
             glBindVertexArray(0);
@@ -849,6 +571,223 @@ int main()
     return 0;
 }
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+void mouse_callback(GLFWwindow* window, double xPos, double yPos)
+{
+    if (firstMouse)
+    {
+        lastX = xPos;
+        lastY = yPos;
+        firstMouse = false;
+    }
+
+    float xOffset = xPos - lastX;
+    float yOffset = lastY - yPos; // y-axis is reversed
+    lastX = xPos;
+    lastY = yPos;
+
+    cam.processMouse(xOffset, yOffset);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    cam.processScroll((float) yoffset);
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_L && action == GLFW_PRESS)
+    {
+        if (shaderType >= CONSTANT) {shaderType = PHONG;} else {shaderType++;}
+    }
+    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+    {
+        if (skyboxToggle == false) {skyboxToggle = true;} else {skyboxToggle = false;}
+    }
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+    {
+        std::cout << "Camera position: (" << cam.pos.x << ", " << cam.pos.y << ", " << cam.pos.z << ")\n";
+    }
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+    {
+        exposure += 0.5f;
+    }
+    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+    {
+        exposure -= 0.5f;
+        if (exposure < 0.5f) {exposure = 0.5f;}
+    }
+    if (key == GLFW_KEY_F && action == GLFW_PRESS)
+    {
+        if (fpsToggle == false) {fpsToggle = true;} else {fpsToggle = false;}
+    }
+    if (key == GLFW_KEY_V && action == GLFW_PRESS)
+    {
+        if (vSyncToggle == true)
+        {
+            glfwSwapInterval(0);
+            vSyncToggle = false;
+        }
+        else
+        {
+            glfwSwapInterval(1);
+            vSyncToggle = true;
+        }
+    }
+    if (key == GLFW_KEY_PERIOD && action == GLFW_PRESS)
+    {
+        if (debugToggle == false) {debugToggle = true;} else {debugToggle = false;}
+    }
+    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+    {
+        ;
+    }
+    if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+    {
+        ;
+    }
+    if (key == GLFW_KEY_3 && action == GLFW_PRESS)
+    {
+        ;
+    }
+    if (key == GLFW_KEY_4 && action == GLFW_PRESS)
+    {
+        ;
+    }
+    if (key == GLFW_KEY_5 && action == GLFW_PRESS)
+    {
+        ;
+    }
+
+}
+
+void processInput(GLFWwindow* window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {cam.processKeyboard(Camera::FORWARD, deltaTime);}
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {cam.processKeyboard(Camera::BACKWARD, deltaTime);}
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {cam.processKeyboard(Camera::LEFT, deltaTime);}
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {cam.processKeyboard(Camera::RIGHT, deltaTime);}
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {cam.processKeyboard(Camera::UP, deltaTime);}
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {cam.processKeyboard(Camera::DOWN, deltaTime);}
+}
+
+void generateCube(GLuint& cubeVBO, GLuint& cubeVAO)
+{
+    float cubeVertices[] = {
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
+    };
+    glGenBuffers(1, &cubeVBO);
+    glGenVertexArrays(1, &cubeVAO);
+    glBindVertexArray(cubeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*) 0);
+    glEnableVertexAttribArray(0);
+}
+
+void generateQuad(GLuint& quadFBO, GLuint& quadVBO, GLuint& quadVAO, GLuint& quadTexture)
+{
+    float quadVertices[] = {  
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+        1.0f,  1.0f,  1.0f, 1.0f
+    };	
+    glGenFramebuffers(1, &quadFBO);
+
+    glGenTextures(1, &quadTexture);
+    glBindTexture(GL_TEXTURE_2D, quadTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, quadFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, quadTexture, 0);
+
+    GLuint rboDepth;
+    glGenRenderbuffers(1, &rboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Framebuffer not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glGenBuffers(1, &quadVBO);
+    glGenVertexArrays(1, &quadVAO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) 0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*) (2 * sizeof(float)));
+    glEnableVertexAttribArray(1);    
+}
+
+void generateLine(GLuint& lineVBO, GLuint& lineVAO)
+{
+    glGenBuffers(1, &lineVBO);
+    glGenVertexArrays(1, &lineVAO);
+    glBindVertexArray(lineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), NULL, GL_DYNAMIC_DRAW); 
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+}
 
 GLuint loadCubemap(vector<std::string> faces)
 {
@@ -940,6 +879,99 @@ GLuint loadEquirectangularMap(const char* path)
     
     stbi_set_flip_vertically_on_load(false);
     return textureID;
+}
+
+void generateSkybox(GLuint& cubeVBO, GLuint& cubeVAO, GLuint &equirectangularMap, GLuint& skyboxCubemap, GLuint& captureFBO, Shader& er2cubemapShaders)
+{
+        glGenTextures(1, &skyboxCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxCubemap);
+
+    for (int i = 0; i < 6; ++i)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, SKYBOX_WIDTH, SKYBOX_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glGenFramebuffers(1, &captureFBO);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+
+    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    glm::mat4 captureViews[] = 
+    {
+        glm::lookAt(glm::vec3(0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // +X
+        glm::lookAt(glm::vec3(0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // -X
+        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)), // +Y
+        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)), // -Y
+        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)), // +Z
+        glm::lookAt(glm::vec3(0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))  // -Z
+    };
+    
+    er2cubemapShaders.use();
+    er2cubemapShaders.setInt("equirectangularMap", 0);
+    er2cubemapShaders.setMat4("projection", captureProjection);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, equirectangularMap);
+
+    glViewport(0, 0, SKYBOX_WIDTH, SKYBOX_HEIGHT);
+    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+
+    for (int i = 0; i < 6; ++i)
+    {
+        er2cubemapShaders.setMat4("view", captureViews[i]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, skyboxCubemap, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBindVertexArray(cubeVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+}
+
+void generateShadowMap(GLuint& shadowMapFBO, GLuint& shadowMap)
+{
+    glGenFramebuffers(1, &shadowMapFBO);
+    
+    glGenTextures(1, &shadowMap);
+    glBindTexture(GL_TEXTURE_2D, shadowMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, DIR_SHADOW_WIDTH, DIR_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void generateShadowCubemap(GLuint& shadowCubemapFBO, GLuint& shadowCubemap)
+{
+    glGenFramebuffers(1, &shadowCubemapFBO);
+    glGenTextures(1, &shadowCubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap);
+    
+    for (int j = 0; j < 6; ++j)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + j, 0, GL_DEPTH_COMPONENT, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowCubemapFBO);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowCubemap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
 }
 
 glm::vec3 srgbToLinear(glm::vec3 srgb) {
