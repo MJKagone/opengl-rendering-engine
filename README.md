@@ -31,7 +31,7 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 
 | Key/Input | Action |
 | :--- | :--- |
-| **WASDEQ** | Move forward / backward / left / right / up / down |
+| **WASDEQ** | Move forward / left / backward / right / up / down |
 | **Mouse move** | Look around (yaw/pitch) |
 | **Mouse scroll**| Zoom (adjust field of view) |
 | **L** | Toggle active shader (Phong / Constant / Depth*) (*not included in demo) |
@@ -40,6 +40,7 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 | **F** | Toggle FPS counter |
 | **V** | Toggle V-Sync (FPS cap) |
 | **Up/down** | Increase/decrease camera exposure (HDR) |
+| **.** | Toggle debug mode (currently: show light sources as cubes) |
 | **Escape** | Close the application | 
 
 ## Dependencies

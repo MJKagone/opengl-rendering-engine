@@ -29,7 +29,7 @@ public:
     bool firstMouse = true;
     float fov = 45.0f;
     
-    Camera(glm::vec3 cameraPos, glm::vec3 cameraFront, glm::vec3 worldUp) {
+    Camera(glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f)) {
         this->pos = cameraPos;
         this->front = cameraFront;
         this->worldUp = worldUp;

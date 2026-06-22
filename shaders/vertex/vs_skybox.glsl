@@ -6,7 +6,7 @@ out vec3 vTexCoords;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 rotation;
+uniform mat4 rotation = mat4(1.0); 
 
 void main()
 {
