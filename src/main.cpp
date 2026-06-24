@@ -31,6 +31,7 @@ bool skyboxToggle = true;
 bool fpsToggle = true;
 bool vSyncToggle = true;
 bool debugToggle = false;
+bool normalToggle = true;
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
@@ -246,6 +247,8 @@ int main()
 		processInput(window);
         quadShaders.use();
         quadShaders.setFloat("exposure", exposure);
+        phongShaders.use();
+        phongShaders.setBool("normalToggle", normalToggle);
         
         // Clear background
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -637,6 +640,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             glfwSwapInterval(1);
             vSyncToggle = true;
         }
+    }
+    if (key == GLFW_KEY_N && action == GLFW_PRESS)
+    {
+        if (normalToggle == false) {normalToggle = true;} else {normalToggle = false;}
     }
     if (key == GLFW_KEY_PERIOD && action == GLFW_PRESS)
     {

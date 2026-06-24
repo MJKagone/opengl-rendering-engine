@@ -20,6 +20,7 @@ uniform vec3 material_diffuseColor;
 uniform bool hasDiffuseTexture;
 uniform bool hasSpecularTexture;
 uniform bool hasNormalTexture;
+uniform bool normalToggle;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform bool hasEmission;
@@ -157,7 +158,7 @@ void main()
 	// Properties
 	vec3 viewDir = normalize(viewPos - vFragPos);
 	vec3 normal;
-	if (hasNormalTexture) {
+	if (hasNormalTexture && normalToggle) {
 		vec3 normalMap = texture(texture_normal1, vTexCoords).rgb;
 		vec3 unpackedvNormal = normalMap * 2.0 - 1.0;
 		normal = normalize(vTBN * unpackedvNormal);
