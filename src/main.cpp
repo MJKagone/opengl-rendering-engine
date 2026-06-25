@@ -32,6 +32,7 @@ bool fpsToggle = true;
 bool vSyncToggle = true;
 bool debugToggle = false;
 bool normalToggle = true;
+bool pointLightToggle = true;
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
@@ -249,9 +250,14 @@ int main()
         quadShaders.setFloat("exposure", exposure);
         phongShaders.use();
         phongShaders.setBool("normalToggle", normalToggle);
+        phongShaders.setInt("numPointLights", pointLightToggle ? NUM_POINT_LIGHTS : 0);
         
         // Clear background
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        if (shaderType == DEPTH) {
+            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        } else {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         // Define delta time
@@ -310,62 +316,64 @@ int main()
             glBindTexture(GL_TEXTURE_2D, shadowMap);
 
             // 1.2: Render point light shadow cubemaps
-            for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+            if (pointLightToggle)
+            {
+                for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 
-                glm::vec3 lightPos = pointLightPositions[i];
-                float aspect = (float) POINT_SHADOW_WIDTH / (float) POINT_SHADOW_HEIGHT;
-                float near = 0.1f;
-                float far = 25.0f;
-                glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, near, far);
+                    glm::vec3 lightPos = pointLightPositions[i];
+                    float aspect = (float) POINT_SHADOW_WIDTH / (float) POINT_SHADOW_HEIGHT;
+                    float near = 0.1f;
+                    float far = 25.0f;
+                    glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f), aspect, near, far);
 
-                std::vector<glm::mat4> shadowTransforms;
-                shadowTransforms.push_back(shadowProj * 
-                    glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0)));
-                shadowTransforms.push_back(shadowProj * 
-                    glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0)));
-                shadowTransforms.push_back(shadowProj * 
-                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-                shadowTransforms.push_back(shadowProj * 
-                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0)));
-                shadowTransforms.push_back(shadowProj * 
-                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0)));
-                shadowTransforms.push_back(shadowProj * 
-                    glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0)));
-                
-                pointShadowShaders.use();
-                for (int j = 0; j < 6; ++j) {
-                    pointShadowShaders.setMat4(shadowMatrixNames[j], shadowTransforms[j]);
+                    std::vector<glm::mat4> shadowTransforms;
+                    shadowTransforms.push_back(shadowProj * 
+                        glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0)));
+                    shadowTransforms.push_back(shadowProj * 
+                        glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0)));
+                    shadowTransforms.push_back(shadowProj * 
+                        glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+                    shadowTransforms.push_back(shadowProj * 
+                        glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0)));
+                    shadowTransforms.push_back(shadowProj * 
+                        glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0)));
+                    shadowTransforms.push_back(shadowProj * 
+                        glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0)));
+                    
+                    pointShadowShaders.use();
+                    for (int j = 0; j < 6; ++j) {
+                        pointShadowShaders.setMat4(shadowMatrixNames[j], shadowTransforms[j]);
+                    }
+
+                    pointShadowShaders.setFloat("far", far);
+                    pointShadowShaders.setVec3("lightPos", lightPos);
+
+                    glViewport(0, 0, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT);
+                    glBindFramebuffer(GL_FRAMEBUFFER, shadowCubemapFBO[i]);
+                    glClear(GL_DEPTH_BUFFER_BIT);
+                    glActiveTexture(GL_TEXTURE0);
+
+                    // Render scene with loaded models
+                    model = glm::mat4(1.0f);
+                    model = glm::translate(model, scenePos);
+                    model = glm::scale(model, sceneScale);
+                    // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+                    pointShadowShaders.setMat4("model", model);
+                    scene.Draw(pointShadowShaders);
+
+                    model =  glm::mat4(1.0f);
+                    model = glm::translate(model, lampPos);
+                    model = glm::scale(model, lampScale);
+                    model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+                    pointShadowShaders.setMat4("model", model);
+                    lamp.Draw(pointShadowShaders);
+
+                    phongShaders.use();
+                    phongShaders.setInt(shadowCubemapNames[i], 10 + i);
+                    glActiveTexture(GL_TEXTURE10 + i);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
                 }
-
-                pointShadowShaders.setFloat("far", far);
-                pointShadowShaders.setVec3("lightPos", lightPos);
-
-                glViewport(0, 0, POINT_SHADOW_WIDTH, POINT_SHADOW_HEIGHT);
-                glBindFramebuffer(GL_FRAMEBUFFER, shadowCubemapFBO[i]);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                glActiveTexture(GL_TEXTURE0);
-
-                // Render scene with loaded models
-                model = glm::mat4(1.0f);
-                model = glm::translate(model, scenePos);
-                model = glm::scale(model, sceneScale);
-                // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-                pointShadowShaders.setMat4("model", model);
-                scene.Draw(pointShadowShaders);
-
-                model =  glm::mat4(1.0f);
-                model = glm::translate(model, lampPos);
-                model = glm::scale(model, lampScale);
-                model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-                pointShadowShaders.setMat4("model", model);
-                lamp.Draw(pointShadowShaders);
-
-                phongShaders.use();
-                phongShaders.setInt(shadowCubemapNames[i], 10 + i);
-                glActiveTexture(GL_TEXTURE10 + i);
-                glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
             }
-
             glCullFace(GL_BACK);
         }
         
@@ -524,7 +532,7 @@ int main()
         ////////////////////////////////////
         // 3. PASS: RENDER SKYBOX TO QUAD //
         ////////////////////////////////////
-        if (skyboxToggle)
+        if (skyboxToggle && shaderType == PHONG)
         {
             glDepthFunc(GL_LEQUAL);
             glDisable(GL_CULL_FACE);
@@ -603,9 +611,13 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_L && action == GLFW_PRESS)
+    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
     {
-        if (shaderType >= CONSTANT) {shaderType = PHONG;} else {shaderType++;}
+        if (shaderType <= PHONG) {shaderType = DEPTH;} else {shaderType--;}
+    }
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+    {
+        if (shaderType >= DEPTH) {shaderType = PHONG;} else {shaderType++;}
     }
     if (key == GLFW_KEY_B && action == GLFW_PRESS)
     {
@@ -627,6 +639,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_F && action == GLFW_PRESS)
     {
         if (fpsToggle == false) {fpsToggle = true;} else {fpsToggle = false;}
+    }
+    if (key == GLFW_KEY_L && action == GLFW_PRESS)
+    {
+        pointLightToggle = !pointLightToggle;
     }
     if (key == GLFW_KEY_V && action == GLFW_PRESS)
     {

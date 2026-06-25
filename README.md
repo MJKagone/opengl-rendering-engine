@@ -17,7 +17,6 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
   * Percentage-Closer Filtering (PCF) for softer shadow edges
 - [x] **Skybox**: Equirectangular skybox with seamless cubemap sampling
 - [x] **Camera system**: Interactive 3D fly-camera with zoom
-- [x] **Interactive shaders**: Toggle between Phong, Constant and Depth shaders at runtime
 - [x] **Multisample anti-aliasing**: 4x MSAA for smoother edges
 - [x] **Gamma correction & HDR**: Gamma correction and high dynamic range rendering with tone mapping
 
@@ -31,16 +30,18 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 
 | Key/Input | Action |
 | :--- | :--- |
-| **WASDEQ** | Move forward / left / backward / right / up / down |
 | **Mouse move** | Look around (yaw/pitch) |
 | **Mouse scroll**| Zoom (adjust field of view) |
-| **L** | Toggle active shader (Phong / Constant / Depth*) (*not included in demo) |
+| **WASDEQ** | Forward/left/backward/right/up/down |
 | **B** | Toggle skybox rendering |
-| **Space** | Print current camera position to standard output (helps with object/light placement) |
 | **F** | Toggle FPS counter |
+| **L** | Toggle point lights on/off |
+| **N** | Toggle normal mapping |
 | **V** | Toggle V-Sync (FPS cap) |
-| **Up/down** | Increase/decrease camera exposure (HDR) |
 | **.** | Toggle debug mode (currently: show light sources as cubes) |
+| **Space** | Print current camera position to standard output |
+| **Left/Right** | Switch between shaders (currently: Phong/constant/depth) |
+| **Up/down** | Increase/decrease camera exposure (HDR) |
 | **Escape** | Close the application | 
 
 ## Dependencies
