@@ -185,6 +185,8 @@ int main()
     // Define model transformations
     glm::vec3 scenePos = glm::vec3(0.0f, -2.0f, 0.0f);
     glm::vec3 sceneScale = glm::vec3(0.03f);
+    float sceneRotation = 0.0f;
+    glm::vec3 sceneRotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 lampPos = glm::vec3(4.0f, 16.2f, -3.0f);
     glm::vec3 lampScale = glm::vec3(0.075f);
     glm::vec3 pointLightCubeScale = glm::vec3(0.02f);
@@ -192,7 +194,7 @@ int main()
     // Define light(s)
     glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
     float dirLightIntensity = 5.0f;
-    glm::vec3 dirLightPos = glm::vec3(60.0f, 25.0f, 0.0f);
+    glm::vec3 dirLightPos = glm::vec3(60.0f, 20.0f, 0.0f);
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.08f, 4.35f, -14.0f), // left bedside lamp
         glm::vec3(6.85f, 4.35f, -14.0f), // right bedside lamp
@@ -220,8 +222,7 @@ int main()
     }
     
     phongShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
-    glm::vec3 lightDirection = glm::vec3(0.0f, 0.0f, 0.0f) - dirLightPos;
-    phongShaders.setVec3("dirLight.direction", lightDirection);
+    phongShaders.setVec3("dirLight.position", dirLightPos);
 
     phongShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
     phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
@@ -299,6 +300,7 @@ int main()
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, scenePos);
             model = glm::scale(model, sceneScale);
+            model = glm::rotate(model, sceneRotation, sceneRotationAxis);
             dirShadowShaders.setMat4("model", model);
             scene.Draw(dirShadowShaders);
 
@@ -357,7 +359,7 @@ int main()
                     model = glm::mat4(1.0f);
                     model = glm::translate(model, scenePos);
                     model = glm::scale(model, sceneScale);
-                    // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+                    model = glm::rotate(model, sceneRotation, sceneRotationAxis);
                     pointShadowShaders.setMat4("model", model);
                     scene.Draw(pointShadowShaders);
 
@@ -410,7 +412,7 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, scenePos);
         model = glm::scale(model, sceneScale);
-        // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, sceneRotation, sceneRotationAxis);
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
         if (shaderType == PHONG) {
@@ -508,7 +510,7 @@ int main()
 
             // // Debug line
             glm::vec3 lineStart = dirLightPos;
-            glm::vec3 lineEnd = dirLightPos + glm::normalize(lightDirection) * 5.0f; 
+            glm::vec3 lineEnd = glm::vec3(0.0f, 0.0f, 0.0f); // Pointing towards the origin
 
             float lineVertices[] = {
                 lineStart.x, lineStart.y, lineStart.z,

@@ -38,7 +38,7 @@ const vec3 sampleOffsetDirections[20] = vec3[]
 );
 
 struct DirLight {
-    vec3 direction;
+    vec3 position;
     vec3 color;
 };
 uniform DirLight dirLight;
@@ -60,7 +60,7 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 		return 0.0f;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	float bias = max(0.001f * (1.0f - dot(normal, -lightDir)), 0.001f);
+	float bias = max(0.001f * (1.0f - dot(normal, lightDir)), 0.0001f);
 	float shadow = 0.0f;
 	vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
 	for(int x = -2; x <= 2; ++x)
@@ -77,16 +77,16 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 
 float calcPointShadow(vec3 fragPos, vec3 lightPos, vec3 normal, int lightIndex)
 {
-    vec3 fragToLight = fragPos - lightPos;
+    vec3 fragToLight = lightPos - fragPos;
     float currentDepth = length(fragToLight);
-    float bias = 0.01f; 
+    float bias = 0.05f; 
     float shadow = 0.0f;
     float diskRadius = 0.05f;
     int samples = 16;
 
     for(int i = 0; i < samples; ++i)
     {
-        float closestDepth = texture(shadowCubemaps[lightIndex], fragToLight + sampleOffsetDirections[i] * diskRadius).r;
+        float closestDepth = texture(shadowCubemaps[lightIndex], -fragToLight + sampleOffsetDirections[i] * diskRadius).r;
         closestDepth *= far_plane; // undo mapping [0;1]
         if(currentDepth - bias > closestDepth)
             shadow += 1.0f;
@@ -102,11 +102,11 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffuseTex, ve
     vec3 ambient = globalAmbient * diffuseTex;
 
     // Diffuse
-    vec3 lightDir = normalize(light.direction);
-    float diffStrength = max(dot(normal, -lightDir), 0.0f);
+    vec3 lightDir = normalize(light.position - vFragPos);
+    float diffStrength = max(dot(normal, lightDir), 0.0f);
 
     // Specular
-    vec3 halfwayDir = normalize(-light.direction + viewDir);
+    vec3 halfwayDir = normalize(lightDir + viewDir);
     float specStrength = pow(max(dot(normal, halfwayDir), 0.0f), shininess);
 
 	// Shadow
