@@ -180,5 +180,6 @@ void main()
     if (hasEmission) {
         result += emissionTex;
     }
+	
     FragColor = vec4(result, transparency);	
 }

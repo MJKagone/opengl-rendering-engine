@@ -48,9 +48,12 @@ public:
     bool hasDiffuseTexture;
     bool hasSpecularTexture;
     bool hasNormalTexture;
-
+    bool hasMetallicTexture;
+    bool hasRoughnessTexture;
+    bool hasAOTexture;
+    bool hasEmissionTexture;
     // constructor
-    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, float shininess = 32.0f)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, float shininess = 32.0f)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -59,6 +62,10 @@ public:
         this->hasDiffuseTexture = hasDiffuseTexture;
         this->hasSpecularTexture = hasSpecularTexture;
         this->hasNormalTexture = hasNormalTexture;
+        this->hasMetallicTexture = hasMetallicTexture;
+        this->hasRoughnessTexture = hasRoughnessTexture;
+        this->hasAOTexture = hasAOTexture;
+        this->hasEmissionTexture = hasEmissionTexture;
         this->shininess = shininess;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
@@ -74,7 +81,9 @@ public:
         unsigned int normalNr   = 1;
         unsigned int heightNr   = 1;
         unsigned int emissionNr = 1;
-        bool hasEmissionMap = false;
+        unsigned int metallicNr = 1;
+        unsigned int roughnessNr = 1;
+        unsigned int aoNr = 1;
 
         for (int i = 0; i < static_cast<int>(textures.size()); i++)
         {
@@ -92,10 +101,13 @@ public:
             else if(name == "texture_height")
                 number = std::to_string(heightNr++);
             else if(name == "texture_emission") 
-            {
                 number = std::to_string(emissionNr++);
-                hasEmissionMap = true;
-            }
+            else if (name == "texture_metallic")
+                number = std::to_string(metallicNr++);
+            else if(name == "texture_roughness")
+                number = std::to_string(roughnessNr++);
+            else if(name == "texture_ao")
+                number = std::to_string(aoNr++);
 
             // now set the sampler to the correct texture unit
             glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
@@ -103,10 +115,13 @@ public:
             glBindTexture(GL_TEXTURE_2D, textures[i].id);
         }
         
-        glUniform1i(glGetUniformLocation(shader.ID, "hasEmission"), hasEmissionMap);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasEmissionTexture"), hasEmissionTexture);
         glUniform1i(glGetUniformLocation(shader.ID, "hasDiffuseTexture"), hasDiffuseTexture);
         glUniform1i(glGetUniformLocation(shader.ID, "hasSpecularTexture"), hasSpecularTexture);
         glUniform1i(glGetUniformLocation(shader.ID, "hasNormalTexture"), hasNormalTexture);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasMetallicTexture"), hasMetallicTexture);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasRoughnessTexture"), hasRoughnessTexture);
+        glUniform1i(glGetUniformLocation(shader.ID, "hasAOTexture"), hasAOTexture);
         glUniform3fv(glGetUniformLocation(shader.ID, "material_diffuseColor"), 1, &diffuseColor[0]);
         glUniform1f(glGetUniformLocation(shader.ID, "shininess"), this->shininess);
         

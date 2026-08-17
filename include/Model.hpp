@@ -174,6 +174,19 @@ private:
         // 5. emission maps
         std::vector<Texture> emissionMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emission", this->gammaCorrection);
         textures.insert(textures.end(), emissionMaps.begin(), emissionMaps.end());
+        bool hasEmissionTexture = !emissionMaps.empty();
+        // 6. metallic maps
+        std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", false);
+        textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
+        bool hasMetallicTexture = !metallicMaps.empty();
+        // 7. roughness maps
+        std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", false);
+        textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
+        bool hasRoughnessTexture = !roughnessMaps.empty();
+        // 8. ambient occlusion maps
+        std::vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao", false);
+        textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
+        bool hasAOTexture = !aoMaps.empty();
 
         // Robust material color extraction chain
         glm::vec3 diffuseColor(1.0f); 
@@ -211,7 +224,7 @@ private:
         }
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, shininess);
+        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, shininess);
         
     }
 

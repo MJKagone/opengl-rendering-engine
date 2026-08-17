@@ -63,6 +63,7 @@ Camera cam = Camera(initialCamPos);
 
 enum ShaderType {
     PHONG,
+    PBR,
     CONSTANT,
     DEPTH
 };
@@ -119,6 +120,7 @@ int main()
 	// Define shaders
     std::cout << "Compiling shaders...\n";
 	Shader phongShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_phong.glsl");
+    Shader pbrShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_pbr.glsl");
     Shader constantShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_constant.glsl");
 	Shader lightSourceShaders("shaders/vertex/vs_lightSource.glsl", "shaders/fragment/fs_lightSource.glsl");
     Shader er2cubemapShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_er2cubemap.glsl");
@@ -211,31 +213,51 @@ int main()
     glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
     float pointLight4Intensity = 5.0f;
 
+    // -----------------------------------------
+    // 1. Setup Phong Shaders
+    // -----------------------------------------
     phongShaders.use();
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
     phongShaders.setFloat("far_plane", 25.0f);
     phongShaders.setFloat("globalAmbient", 0.05f);
 
-    // Initialize all samplerCube uniforms to prevent type conflicts on texture unit 0
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
     }
-    
+
     phongShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
     phongShaders.setVec3("dirLight.position", dirLightPos);
-
     phongShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
     phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
-    
     phongShaders.setVec3("pointLights[1].color", srgbToLinear(pointLightColor2) * pointLight2Intensity);
     phongShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
-    
     phongShaders.setVec3("pointLights[2].color", srgbToLinear(pointLightColor3) * pointLight3Intensity);
     phongShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-
-    // Laptop light
     phongShaders.setVec3("pointLights[3].color", srgbToLinear(pointLightColor4) * pointLight4Intensity);
     phongShaders.setVec3("pointLights[3].position", pointLightPositions[3]);
+
+    // -----------------------------------------
+    // 2. Setup PBR Shaders
+    // -----------------------------------------
+    pbrShaders.use();
+    pbrShaders.setInt("numPointLights", NUM_POINT_LIGHTS); 
+    pbrShaders.setFloat("far_plane", 25.0f);
+    pbrShaders.setFloat("globalAmbient", 0.05f);
+
+    for (int i = 0; i < 10; i++) { 
+        pbrShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
+    }
+
+    pbrShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
+    pbrShaders.setVec3("dirLight.position", dirLightPos);
+    pbrShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
+    pbrShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
+    pbrShaders.setVec3("pointLights[1].color", srgbToLinear(pointLightColor2) * pointLight2Intensity);
+    pbrShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
+    pbrShaders.setVec3("pointLights[2].color", srgbToLinear(pointLightColor3) * pointLight3Intensity);
+    pbrShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
+    pbrShaders.setVec3("pointLights[3].color", srgbToLinear(pointLightColor4) * pointLight4Intensity);
+    pbrShaders.setVec3("pointLights[3].position", pointLightPositions[3]);
 
     skyboxShaders.use();
     skyboxShaders.setInt("skybox", 0);
@@ -252,6 +274,9 @@ int main()
         phongShaders.use();
         phongShaders.setBool("normalToggle", normalToggle);
         phongShaders.setInt("numPointLights", pointLightToggle ? NUM_POINT_LIGHTS : 0);
+        pbrShaders.use();
+        pbrShaders.setBool("normalToggle", normalToggle);
+        pbrShaders.setInt("numPointLights", pointLightToggle ? NUM_POINT_LIGHTS : 0);
         
         // Clear background
         if (shaderType == DEPTH) {
@@ -279,7 +304,7 @@ int main()
         /////////////////////////////////////////////////////////
         // 1. PASS: RENDER SHADOW MAP FROM LIGHTS' PERSPECTIVE //
         /////////////////////////////////////////////////////////
-        if (shaderType == PHONG) {
+        if (shaderType == PHONG or shaderType == PBR) {
 
             // 1.1: Render directional light shadow map
             glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, NEAR_PLANE, FAR_PLANE);
@@ -311,11 +336,21 @@ int main()
             dirShadowShaders.setMat4("model", model);
             lamp.Draw(dirShadowShaders);
 
-            phongShaders.use();
-            phongShaders.setInt("shadowMap", 9); // 1 -> 9, Gemini suggestion
-            phongShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
-            glActiveTexture(GL_TEXTURE9);
-            glBindTexture(GL_TEXTURE_2D, shadowMap);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            if (shaderType == PHONG) {
+                phongShaders.use();
+                phongShaders.setInt("shadowMap", 9); // 1 -> 9, Gemini suggestion
+                phongShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
+                glActiveTexture(GL_TEXTURE9);
+                glBindTexture(GL_TEXTURE_2D, shadowMap);
+            } else if (shaderType == PBR) {
+                pbrShaders.use();
+                pbrShaders.setInt("shadowMap", 9); // 1 -> 9, Gemini suggestion
+                pbrShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
+                glActiveTexture(GL_TEXTURE9);
+                glBindTexture(GL_TEXTURE_2D, shadowMap);
+            }
 
             // 1.2: Render point light shadow cubemaps
             if (pointLightToggle)
@@ -370,13 +405,26 @@ int main()
                     pointShadowShaders.setMat4("model", model);
                     lamp.Draw(pointShadowShaders);
 
-                    phongShaders.use();
-                    phongShaders.setInt(shadowCubemapNames[i], 10 + i);
-                    glActiveTexture(GL_TEXTURE10 + i);
-                    glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 }
-            }
+                
+                for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+                    if (shaderType == PHONG) {
+                        phongShaders.use();
+                        phongShaders.setInt(shadowCubemapNames[i], 10 + i);
+                        glActiveTexture(GL_TEXTURE10 + i);
+                        glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
+                    } else if (shaderType == PBR) {
+                        pbrShaders.use();
+                        pbrShaders.setInt(shadowCubemapNames[i], 10 + i);
+                        glActiveTexture(GL_TEXTURE10 + i);
+                        glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
+                    }
+                }
+
             glCullFace(GL_BACK);
+
+            }
         }
         
         ///////////////////////////////////
@@ -395,6 +443,12 @@ int main()
             phongShaders.setMat4("projection", projection);
             phongShaders.setMat4("view", view);
             phongShaders.setVec3("viewPos", cam.pos);
+        }
+        else if (shaderType == PBR) {
+            pbrShaders.use();
+            pbrShaders.setMat4("projection", projection);
+            pbrShaders.setMat4("view", view);
+            pbrShaders.setVec3("viewPos", cam.pos);
         }
         else if (shaderType == CONSTANT) {
             constantShaders.use();
@@ -421,6 +475,12 @@ int main()
             phongShaders.setFloat("transparency", 1.0f);
             scene.Draw(phongShaders);
         }
+        else if (shaderType == PBR) {
+            pbrShaders.setMat4("model", model);
+            pbrShaders.setMat3("normalMatrix", normalMatrix);
+            pbrShaders.setFloat("transparency", 1.0f);
+            scene.Draw(pbrShaders);
+        }
         else if (shaderType == CONSTANT) {
             constantShaders.setMat4("model", model);
             constantShaders.setMat3("normalMatrix", normalMatrix);
@@ -444,6 +504,12 @@ int main()
             phongShaders.setMat3("normalMatrix", normalMatrix);
             phongShaders.setFloat("transparency", 1.0f);
             lamp.Draw(phongShaders);
+        }
+        else if (shaderType == PBR) {
+            pbrShaders.setMat4("model", model);
+            pbrShaders.setMat3("normalMatrix", normalMatrix);
+            pbrShaders.setFloat("transparency", 1.0f);
+            lamp.Draw(pbrShaders);
         }
         else if (shaderType == CONSTANT) {
             constantShaders.setMat4("model", model);
@@ -534,7 +600,7 @@ int main()
         ////////////////////////////////////
         // 3. PASS: RENDER SKYBOX TO QUAD //
         ////////////////////////////////////
-        if (skyboxToggle && shaderType == PHONG)
+        if ((skyboxToggle && shaderType == PHONG) or (skyboxToggle && shaderType == PBR))
         {
             glDepthFunc(GL_LEQUAL);
             glDisable(GL_CULL_FACE);
