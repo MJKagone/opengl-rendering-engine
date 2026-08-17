@@ -110,20 +110,20 @@ public:
                 number = std::to_string(aoNr++);
 
             // now set the sampler to the correct texture unit
-            glUniform1i(glGetUniformLocation(shader.ID, (name + number).c_str()), i);
+            shader.setInt(name + number, i);
             // and finally bind the texture
             glBindTexture(GL_TEXTURE_2D, textures[i].id);
         }
         
-        glUniform1i(glGetUniformLocation(shader.ID, "hasEmissionTexture"), hasEmissionTexture);
-        glUniform1i(glGetUniformLocation(shader.ID, "hasDiffuseTexture"), hasDiffuseTexture);
-        glUniform1i(glGetUniformLocation(shader.ID, "hasSpecularTexture"), hasSpecularTexture);
-        glUniform1i(glGetUniformLocation(shader.ID, "hasNormalTexture"), hasNormalTexture);
-        glUniform1i(glGetUniformLocation(shader.ID, "hasMetallicTexture"), hasMetallicTexture);
-        glUniform1i(glGetUniformLocation(shader.ID, "hasRoughnessTexture"), hasRoughnessTexture);
-        glUniform1i(glGetUniformLocation(shader.ID, "hasAOTexture"), hasAOTexture);
-        glUniform3fv(glGetUniformLocation(shader.ID, "material_diffuseColor"), 1, &diffuseColor[0]);
-        glUniform1f(glGetUniformLocation(shader.ID, "shininess"), this->shininess);
+        shader.setBool("hasEmissionTexture", hasEmissionTexture);
+        shader.setBool("hasDiffuseTexture", hasDiffuseTexture);
+        shader.setBool("hasSpecularTexture", hasSpecularTexture);
+        shader.setBool("hasNormalTexture", hasNormalTexture);
+        shader.setBool("hasMetallicTexture", hasMetallicTexture);
+        shader.setBool("hasRoughnessTexture", hasRoughnessTexture);
+        shader.setBool("hasAOTexture", hasAOTexture);
+        shader.setVec3("material_diffuseColor", diffuseColor);
+        shader.setFloat("shininess", this->shininess);
         
         // draw mesh
         glBindVertexArray(VAO);

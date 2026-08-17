@@ -13,7 +13,6 @@ out vec4 FragColor;
 uniform int numPointLights;
 uniform vec3 viewPos;
 uniform sampler2D texture_diffuse1;
-uniform sampler2D texture_specular1;
 uniform sampler2D texture_normal1;
 uniform sampler2D texture_emission1;
 uniform sampler2D texture_metallic1;
@@ -21,7 +20,6 @@ uniform sampler2D texture_roughness1;
 uniform sampler2D texture_ao1;
 uniform vec3 material_diffuseColor;
 uniform bool hasDiffuseTexture;
-uniform bool hasSpecularTexture;
 uniform bool hasNormalTexture;
 uniform bool hasEmissionTexture;
 uniform bool hasMetallicTexture;
@@ -214,7 +212,7 @@ void main()
 	}
     vec3 albedo = hasDiffuseTexture ? vec3(texture(texture_diffuse1, vTexCoords)) : material_diffuseColor;
 	float metallic = hasMetallicTexture ? texture(texture_metallic1, vTexCoords).r : 0.0f;
-	float roughness = hasRoughnessTexture ? texture(texture_roughness1, vTexCoords).r : 1.0f;
+	float roughness = hasRoughnessTexture ? texture(texture_roughness1, vTexCoords).r : 0.5f;
 	vec3 ao = hasAOTexture ? vec3(texture(texture_ao1, vTexCoords)) : vec3(1.0f);
 	vec3 emissionTex = vec3(texture(texture_emission1, vTexCoords));
 

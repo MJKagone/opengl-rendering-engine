@@ -177,10 +177,18 @@ private:
         bool hasEmissionTexture = !emissionMaps.empty();
         // 6. metallic maps
         std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", false);
+        // FBX fallback: metallic packed into specular
+        if (metallicMaps.empty()) {
+            metallicMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_metallic", false);
+        }
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
         bool hasMetallicTexture = !metallicMaps.empty();
         // 7. roughness maps
         std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", false);
+        // FBX fallback: roughness packed into shininess
+        if (roughnessMaps.empty()) {
+            roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", false);
+        }
         textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         bool hasRoughnessTexture = !roughnessMaps.empty();
         // 8. ambient occlusion maps

@@ -169,7 +169,7 @@ private:
         auto it = uniformLocationCache.find(name);
         if (it != uniformLocationCache.end()) {return it->second;}
         GLint location = glGetUniformLocation(ID, name.c_str());
-        if (location == -1) {std::cout << "Warning: uniform '" << name << "' doesn't exist!" << std::endl;}
+        // if (location == -1) {std::cout << "Warning: uniform '" << name << "' doesn't exist!" << std::endl;}
         uniformLocationCache[name] = location;
         return location;
     }

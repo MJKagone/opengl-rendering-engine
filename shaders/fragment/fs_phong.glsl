@@ -20,10 +20,10 @@ uniform vec3 material_diffuseColor;
 uniform bool hasDiffuseTexture;
 uniform bool hasSpecularTexture;
 uniform bool hasNormalTexture;
+uniform bool hasEmissionTexture;
 uniform bool normalToggle;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
-uniform bool hasEmission;
 uniform float shininess;
 uniform float transparency = 1.0f;
 uniform float far_plane;
@@ -177,7 +177,7 @@ void main()
 		result += calcPointLight(pointLights[i], normal, vFragPos, viewDir, diffuseTex, specularTex, i);
 	}
 	// Output
-    if (hasEmission) {
+    if (hasEmissionTexture) {
         result += emissionTex;
     }
 	

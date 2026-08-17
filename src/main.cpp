@@ -42,7 +42,7 @@ const int POINT_SHADOW_WIDTH = 1024;
 const int POINT_SHADOW_HEIGHT = 1024;
 const int SKYBOX_WIDTH = 2048;
 const int SKYBOX_HEIGHT = 2048;
-const int NUM_POINT_LIGHTS = 4;
+const int NUM_POINT_LIGHTS = 3;
 
 int frameCount = 0;
 
@@ -62,12 +62,12 @@ glm::vec3 initialCamPos = glm::vec3(-38.0f, 15.0f, 30.0f);
 Camera cam = Camera(initialCamPos);
 
 enum ShaderType {
-    PHONG,
     PBR,
+    PHONG,
     CONSTANT,
     DEPTH
 };
-int shaderType = PHONG;
+int shaderType = PBR;
 
 int main()
 {
@@ -78,6 +78,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GL_TRUE);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     // glfwWindowHint(GLFW_DEPTH_BITS, 32);
 
     // Create a window
@@ -195,7 +196,7 @@ int main()
 
     // Define light(s)
     glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
-    float dirLightIntensity = 5.0f;
+    float dirLightIntensity = 10.0f;
     glm::vec3 dirLightPos = glm::vec3(60.0f, 20.0f, 0.0f);
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.08f, 4.35f, -14.0f), // left bedside lamp
@@ -205,11 +206,11 @@ int main()
     };
 
     glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight1Intensity = 20.0f;
+    float pointLight1Intensity = 50.0f;
     glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight2Intensity = 20.0f;
+    float pointLight2Intensity = 50.0f;
     glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
-    float pointLight3Intensity = 100.0f;
+    float pointLight3Intensity = 200.0f;
     glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
     float pointLight4Intensity = 5.0f;
 
@@ -265,6 +266,7 @@ int main()
     //////////////////////
     // MAIN RENDER LOOP //
     //////////////////////
+    glfwShowWindow(window);
 	while (!glfwWindowShouldClose(window))
 	{
         // Input
@@ -636,7 +638,7 @@ int main()
         glEnable(GL_DEPTH_TEST);
 
 
-
+        glFinish();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -681,11 +683,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
     {
-        if (shaderType <= PHONG) {shaderType = DEPTH;} else {shaderType--;}
+        if (shaderType <= PBR) {shaderType = DEPTH;} else {shaderType--;}
     }
     if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
     {
-        if (shaderType >= DEPTH) {shaderType = PHONG;} else {shaderType++;}
+        if (shaderType >= DEPTH) {shaderType = PBR;} else {shaderType++;}
     }
     if (key == GLFW_KEY_B && action == GLFW_PRESS)
     {
