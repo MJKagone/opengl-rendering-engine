@@ -166,15 +166,16 @@ void main()
 		normal = normalize(vNormal);
 	}
     vec3 diffuseTex = hasDiffuseTexture ? vec3(texture(texture_diffuse1, vTexCoords)) : material_diffuseColor;
+	vec3 diffuseColor = pow(diffuseTex, vec3(2.2f)); // Gamma correction
 	vec3 specularTex = hasSpecularTexture ? vec3(texture(texture_specular1, vTexCoords)) : vec3(0.04f);
 	vec3 emissionTex = vec3(texture(texture_emission1, vTexCoords));
 
 	// Lighting calculations
-	vec3 result = calcDirLight(dirLight, normal, viewDir, diffuseTex, specularTex);
+	vec3 result = calcDirLight(dirLight, normal, viewDir, diffuseColor, specularTex);
 	// vec3 result = vec3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < numPointLights; i++)
 	{
-		result += calcPointLight(pointLights[i], normal, vFragPos, viewDir, diffuseTex, specularTex, i);
+		result += calcPointLight(pointLights[i], normal, vFragPos, viewDir, diffuseColor, specularTex, i);
 	}
 	// Output
     if (hasEmissionTexture) {

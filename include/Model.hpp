@@ -341,13 +341,17 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
     {
         GLuint textureID;
         glGenTextures(1, &textureID);
-        // std::cout << "Loaded texture: " << successfulPath << std::endl;
-        GLenum internalFormat;
-        GLenum dataFormat;
+        
+        GLenum internalFormat = 0;
+        GLenum dataFormat = 0;
         
         if (nrComponents == 1) {
             internalFormat = GL_RED;
             dataFormat = GL_RED;
+        }
+        else if (nrComponents == 2) {
+            internalFormat = GL_RG;
+            dataFormat = GL_RG;
         }
         else if (nrComponents == 3) {
             internalFormat = gamma ? GL_SRGB : GL_RGB;
@@ -358,10 +362,13 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
             dataFormat = GL_RGBA;
         }
 
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    // Use internalFormat for the 3rd argument, dataFormat for the 7th argument
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        
+        // Tell OpenGL to expect 1-byte aligned data tightly packed by stbi_load
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);

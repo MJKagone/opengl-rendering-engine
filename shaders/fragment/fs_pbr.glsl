@@ -140,7 +140,7 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 	return ggx1 * ggx2;
 }
 
-vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 ao)
+vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao)
 {
 	vec3 lightDir = normalize(light.position - vFragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
@@ -163,7 +163,7 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float 
 	return (kD * albedo / 3.14159265359f + specular) * radiance * NdotL;
 }
 
-vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 ao, int lightIndex)
+vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao, int lightIndex)
 {
 	vec3 lightDir = normalize(light.position - vFragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
@@ -210,10 +210,15 @@ void main()
 	} else {
 		normal = normalize(vNormal);
 	}
-    vec3 albedo = hasDiffuseTexture ? vec3(texture(texture_diffuse1, vTexCoords)) : material_diffuseColor;
+    vec4 albedoTex = hasDiffuseTexture ? texture(texture_diffuse1, vTexCoords) : vec4(material_diffuseColor, 1.0f);
+	vec3 albedo = pow(albedoTex.rgb, vec3(2.2f));
+	float alpha = albedoTex.a;
+	if (alpha < 0.1f) {
+		discard; // discard fragments with low alpha for transparency
+	}
 	float metallic = hasMetallicTexture ? texture(texture_metallic1, vTexCoords).r : 0.0f;
 	float roughness = hasRoughnessTexture ? texture(texture_roughness1, vTexCoords).r : 0.5f;
-	vec3 ao = hasAOTexture ? vec3(texture(texture_ao1, vTexCoords)) : vec3(1.0f);
+	float ao = hasAOTexture ? texture(texture_ao1, vTexCoords).r : 1.0f;
 	vec3 emissionTex = vec3(texture(texture_emission1, vTexCoords));
 
 	// Lighting calculations
@@ -230,7 +235,7 @@ void main()
     }
 
 	// Ambient
-	Lo += globalAmbient * albedo;
+	Lo += globalAmbient * ao * albedo;
 
-    FragColor = vec4(Lo, transparency);	
+    FragColor = vec4(Lo, alpha);	
 }

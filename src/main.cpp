@@ -49,6 +49,7 @@ int frameCount = 0;
 const float NEAR_PLANE = 0.5f;
 const float FAR_PLANE = 100.0f;
 const float ROTATION_SPEED = 275.0f;
+const float globalAmbient = 0.04f;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
@@ -196,7 +197,7 @@ int main()
 
     // Define light(s)
     glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
-    float dirLightIntensity = 10.0f;
+    float dirLightIntensity = 50.0f;
     glm::vec3 dirLightPos = glm::vec3(60.0f, 20.0f, 0.0f);
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.08f, 4.35f, -14.0f), // left bedside lamp
@@ -206,13 +207,13 @@ int main()
     };
 
     glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight1Intensity = 50.0f;
+    float pointLight1Intensity = 100.0f;
     glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight2Intensity = 50.0f;
+    float pointLight2Intensity = 100.0f;
     glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
-    float pointLight3Intensity = 200.0f;
+    float pointLight3Intensity = 1000.0f;
     glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
-    float pointLight4Intensity = 5.0f;
+    float pointLight4Intensity = 25.0f;
 
     // -----------------------------------------
     // 1. Setup Phong Shaders
@@ -220,7 +221,7 @@ int main()
     phongShaders.use();
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
     phongShaders.setFloat("far_plane", 25.0f);
-    phongShaders.setFloat("globalAmbient", 0.05f);
+    phongShaders.setFloat("globalAmbient", globalAmbient);
 
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
@@ -243,7 +244,7 @@ int main()
     pbrShaders.use();
     pbrShaders.setInt("numPointLights", NUM_POINT_LIGHTS); 
     pbrShaders.setFloat("far_plane", 25.0f);
-    pbrShaders.setFloat("globalAmbient", 0.05f);
+    pbrShaders.setFloat("globalAmbient", globalAmbient);
 
     for (int i = 0; i < 10; i++) { 
         pbrShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
@@ -272,7 +273,8 @@ int main()
         // Input
 		processInput(window);
         quadShaders.use();
-        quadShaders.setFloat("exposure", exposure);
+        if (shaderType == PHONG) {quadShaders.setFloat("exposure", exposure - 0.5f);}
+        else {quadShaders.setFloat("exposure", exposure);}
         phongShaders.use();
         phongShaders.setBool("normalToggle", normalToggle);
         phongShaders.setInt("numPointLights", pointLightToggle ? NUM_POINT_LIGHTS : 0);
