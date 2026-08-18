@@ -322,6 +322,14 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
             expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpg");
             expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpeg");
         }
+        else if (p.length() >= 5 && p.substr(p.length() - 5) == ".webp") {
+            expandedPaths.push_back(p.substr(0, p.length() - 5) + ".png");
+            expandedPaths.push_back(p.substr(0, p.length() - 5) + ".jpg");
+        }
+        else if (p.length() >= 4 && p.substr(p.length() - 4) == ".exr") {
+            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".png");
+            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpg");
+        }
     }
 
     // 5. Try loading the texture from our list of candidate paths
