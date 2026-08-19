@@ -49,7 +49,8 @@ int frameCount = 0;
 const float NEAR_PLANE = 0.5f;
 const float FAR_PLANE = 100.0f;
 const float ROTATION_SPEED = 275.0f;
-const float globalAmbient = 0.04f;
+const float globalAmbient = 0.08f;
+const float orthoScale = 2.0f;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
@@ -207,7 +208,7 @@ int main()
     };
 
     glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight1Intensity = 100.0f;
+    float pointLight1Intensity = 0.0f;
     glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
     float pointLight2Intensity = 100.0f;
     glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
@@ -311,7 +312,7 @@ int main()
         if (shaderType == PHONG or shaderType == PBR) {
 
             // 1.1: Render directional light shadow map
-            glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, NEAR_PLANE, FAR_PLANE);
+            glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, NEAR_PLANE, FAR_PLANE);
             glm::mat4 lightView = glm::lookAt(dirLightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 lightSpaceMatrix = lightProjection * lightView;
             
