@@ -50,6 +50,7 @@ const float NEAR_PLANE = 0.5f;
 const float FAR_PLANE = 100.0f;
 const float ROTATION_SPEED = 275.0f;
 const float globalAmbient = 0.08f;
+const float globalLightScale = 1.0f;
 const float orthoScale = 2.0f;
 
 float lastX = WINDOW_WIDTH / 2.0f;
@@ -198,7 +199,7 @@ int main()
 
     // Define light(s)
     glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
-    float dirLightIntensity = 50.0f;
+    float dirLightIntensity = 25.0f;
     glm::vec3 dirLightPos = glm::vec3(60.0f, 20.0f, 0.0f);
     glm::vec3 pointLightPositions[] = {
         glm::vec3(-8.08f, 4.35f, -14.0f), // left bedside lamp
@@ -210,11 +211,11 @@ int main()
     glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
     float pointLight1Intensity = 0.0f;
     glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight2Intensity = 100.0f;
+    float pointLight2Intensity = 50.0f;
     glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
-    float pointLight3Intensity = 1000.0f;
+    float pointLight3Intensity = 500.0f;
     glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
-    float pointLight4Intensity = 25.0f;
+    float pointLight4Intensity = 10.0f;
 
     // -----------------------------------------
     // 1. Setup Phong Shaders
@@ -312,7 +313,7 @@ int main()
         if (shaderType == PHONG or shaderType == PBR) {
 
             // 1.1: Render directional light shadow map
-            glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, NEAR_PLANE, FAR_PLANE);
+            glm::mat4 lightProjection = glm::ortho(orthoScale * -10.0f, orthoScale * 10.0f, orthoScale * -10.0f, orthoScale * 10.0f, NEAR_PLANE, FAR_PLANE);
             glm::mat4 lightView = glm::lookAt(dirLightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 lightSpaceMatrix = lightProjection * lightView;
             

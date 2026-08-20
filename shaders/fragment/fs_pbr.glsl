@@ -13,6 +13,7 @@ out vec4 FragColor;
 uniform int numPointLights;
 uniform vec3 viewPos;
 uniform sampler2D texture_diffuse1;
+uniform sampler2D texture_specular1;
 uniform sampler2D texture_normal1;
 uniform sampler2D texture_emission1;
 uniform sampler2D texture_metallic1;
@@ -20,6 +21,7 @@ uniform sampler2D texture_roughness1;
 uniform sampler2D texture_ao1;
 uniform vec3 material_diffuseColor;
 uniform bool hasDiffuseTexture;
+uniform bool hasSpecularTexture;
 uniform bool hasNormalTexture;
 uniform bool hasEmissionTexture;
 uniform bool hasMetallicTexture;
@@ -60,8 +62,8 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 {
 	vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
 	projCoords = projCoords * 0.5f + 0.5f;
-	if (projCoords.z > 1.0f) // note: I had this as .x for some reason?
-		return 0.0f;
+	if (projCoords.z > 1.0f || projCoords.x > 1.0f || projCoords.x < 0.0f || projCoords.y > 1.0f || projCoords.y < 0.0f)
+		return 1.0f; // shadow everything outside the light's frustum
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
 	float bias = max(0.001f * (1.0f - dot(normal, lightDir)), 0.0001f);
@@ -140,12 +142,11 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 	return ggx1 * ggx2;
 }
 
-vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao)
+vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao, vec3 F0)
 {
 	vec3 lightDir = normalize(light.position - vFragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 
-	vec3 F0 = mix(vec3(0.04f), albedo, vec3(metallic));
 	vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0f), F0);
 	float NDF = distributionGGX(normal, halfwayDir, roughness);
 	float G = geometrySmith(normal, viewDir, lightDir, roughness);
@@ -163,7 +164,7 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float 
 	return (kD * albedo / 3.14159265359f + specular) * radiance * NdotL;
 }
 
-vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao, int lightIndex)
+vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao, vec3 F0, int lightIndex)
 {
 	vec3 lightDir = normalize(light.position - vFragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
@@ -178,8 +179,7 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, fl
 	}
 
 	vec3 radiance = light.color * attenuation;
-	vec3 F0 = mix(vec3(0.04f), albedo, vec3(metallic));
-	vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0f), F0);
+	vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0f), vec3(F0));
 	float NDF = distributionGGX(normal, halfwayDir, roughness);
 	float G = geometrySmith(normal, viewDir, lightDir, roughness);
 	vec3 numerator = NDF * G * F;
@@ -211,23 +211,44 @@ void main()
 		normal = normalize(vNormal);
 	}
     vec4 albedoTex = hasDiffuseTexture ? texture(texture_diffuse1, vTexCoords) : vec4(material_diffuseColor, 1.0f);
-	vec3 albedo = pow(albedoTex.rgb, vec3(2.2f));
+	vec3 albedo = albedoTex.rgb;
 	float alpha = albedoTex.a;
 	if (alpha < 0.1f) {
 		discard; // discard fragments with low alpha for transparency
 	}
-	float metallic = hasMetallicTexture ? texture(texture_metallic1, vTexCoords).r : 0.0f;
 	float roughness = hasRoughnessTexture ? texture(texture_roughness1, vTexCoords).r : 0.5f;
 	float ao = hasAOTexture ? texture(texture_ao1, vTexCoords).r : 1.0f;
 	vec3 emissionTex = vec3(texture(texture_emission1, vTexCoords));
 
+	// Disambiguate Workflow
+	float metallic = 0.0f;
+	vec3 F0 = vec3(0.04f);
+
+	if (hasMetallicTexture) {
+		metallic = texture(texture_metallic1, vTexCoords).r;
+		if (hasSpecularTexture) {
+			// Both metallic and specular maps: use metallic workflow with specular factor
+			float specFactor = texture(texture_specular1, vTexCoords).r;
+			F0 = mix(vec3(0.08f * specFactor), albedo, metallic);
+		// Only metallic map: basic metallic workflow
+		} else {
+			F0 = mix(vec3(0.04f), albedo, metallic);
+		}
+	} else if (hasSpecularTexture) {
+		// Only specular map: treat as conductor
+		vec3 specColor = texture(texture_specular1, vTexCoords).rgb;
+		F0 = specColor;
+		// If specular highlight is colored/bright, treat as conductor; otherwise treat as dielectric
+		metallic = (max(specColor.r, max(specColor.g, specColor.b)) > 0.1f) ? 1.0f : 0.0f;
+	}
+
 	// Lighting calculations
 	vec3 Lo = vec3(0.0f);
-	Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, ao);
+	Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, ao, F0);
 	// vec3 result = vec3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < numPointLights; i++)
 	{
-		Lo += calcPointLight(pointLights[i], normal, viewDir, albedo, metallic, roughness, ao, i);
+		Lo += calcPointLight(pointLights[i], normal, viewDir, albedo, metallic, roughness, ao, F0, i);
 	}
 	// Output
     if (hasEmissionTexture) {

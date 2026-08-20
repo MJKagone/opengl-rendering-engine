@@ -177,10 +177,6 @@ private:
         bool hasEmissionTexture = !emissionMaps.empty();
         // 6. metallic maps
         std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", false);
-        // FBX fallback: metallic packed into specular
-        if (metallicMaps.empty()) {
-            metallicMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_metallic", false);
-        }
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
         bool hasMetallicTexture = !metallicMaps.empty();
         // 7. roughness maps
