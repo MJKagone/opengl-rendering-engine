@@ -18,7 +18,8 @@ inline glm::vec3 parseVec3(const json& j) {
 
 struct Transform {
     glm::vec3 position;
-    glm::vec3 rotation; // In degrees
+    glm::vec3 rotation; // Current rotation in degrees
+    glm::vec3 rotationVelocity = glm::vec3(0.0f); // Degrees per second
     glm::vec3 scale;
 
     glm::mat4 getMatrix() const {
@@ -58,7 +59,7 @@ public:
     
     float globalAmbient = 0.08f;
     float exposure = 1.0f;
-    std::string skyboxPath;
+    std::vector<std::string> skyboxPath;
 
     std::unordered_map<std::string, Model*> modelCache;
 
@@ -73,7 +74,14 @@ public:
         file >> data; 
 
         if (data.contains("environment")) {
-            skyboxPath = data["environment"].value("skybox", "");
+            if (data["environment"].contains("skyboxPath")) {
+                skyboxPath = data["environment"]["skyboxPath"].get<std::vector<std::string>>();
+            } else {
+                std::string skybox = data["environment"].value("skybox", "");
+                if (!skybox.empty()) {
+                    skyboxPath.push_back(skybox);
+                }
+            }
             exposure = data["environment"].value("exposure", 1.0f);
             globalAmbient = data["environment"].value("globalAmbient", 0.08f);
         }
@@ -82,16 +90,20 @@ public:
             for (const auto& lightNode : data["pointLights"]) {
                 PointLightData light;
                 light.position = parseVec3(lightNode["position"]);
-                light.color = parseVec3(lightNode["color"]);
+                
+                light.color = parseVec3(lightNode["color"]) / 255.0f;
+                
                 light.intensity = lightNode.value("intensity", 1.0f);
                 pointLights.push_back(light);
             }
         }
 
-        if (data.contains("dirLight")) {
-            dirLight.position = parseVec3(data["dirLight"]["position"]);
-            dirLight.color = parseVec3(data["dirLight"]["color"]);
-            dirLight.intensity = data["dirLight"].value("intensity", 1.0f);
+        if (data.contains("directionalLight")) {
+            dirLight.position = parseVec3(data["directionalLight"]["position"]);
+            
+            dirLight.color = parseVec3(data["directionalLight"]["color"]) / 255.0f;
+            
+            dirLight.intensity = data["directionalLight"].value("intensity", 1.0f);
         }
 
         if (data.contains("entities")) {
@@ -101,11 +113,16 @@ public:
                 
                 entity.transform.position = parseVec3(entityNode["position"]);
                 entity.transform.rotation = parseVec3(entityNode["rotation"]);
+                
+                if (entityNode.contains("rotationVelocity")) {
+                    entity.transform.rotationVelocity = parseVec3(entityNode["rotationVelocity"]);
+                }
+
                 entity.transform.scale = parseVec3(entityNode["scale"]);
 
                 std::string modelPath = entityNode["modelPath"];
                 if (modelCache.find(modelPath) == modelCache.end()) {
-                    std::cout << "Loading new model: " << modelPath << std::endl;
+                    std::cout << "Loading model: " << modelPath << std::endl;
                     modelCache[modelPath] = new Model(modelPath);
                 }
                 entity.model = modelCache[modelPath];
@@ -115,6 +132,12 @@ public:
         }
 
         return true;
+    }
+
+    void update(float deltaTime) {
+        for (auto& entity : entities) {
+            entity.transform.rotation += entity.transform.rotationVelocity * deltaTime;
+        }
     }
 
     void cleanUp() {

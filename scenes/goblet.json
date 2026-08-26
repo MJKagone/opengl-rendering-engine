@@ -1,0 +1,20 @@
+{
+  "environment": {
+    "exposure": 1.0,
+    "globalAmbient": 0.08
+  },
+  "directionalLight": {
+    "position": [60.0, 20.0, 0.0],
+    "color": [255.0, 230.0, 200.0],
+    "intensity": 10.0
+  },
+  "entities": [
+    {
+      "name": "goblet",
+      "modelPath": "assets/models/goblet/source/OPM0057.fbx",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [0.2, 0.2, 0.2]
+    }
+  ]
+}

@@ -23,6 +23,7 @@ void generateLine(GLuint &VBO, GLuint &VAO);
 void generateSkybox(GLuint &VAO, GLuint &VBO, GLuint &equirectangularMap, GLuint &cubemap, GLuint &captureFBO, Shader &er2cubemapShader);
 void generateShadowMap(GLuint &FBO, GLuint &texture);
 void generateShadowCubemap(GLuint &shadowCubemapFBO, GLuint &shadowCubemap);
+GLuint loadCubemap(const std::vector<std::string>& faces);
 GLuint loadEquirectangularMap(const char* path);
 glm::vec3 srgbToLinear(glm::vec3 srgb);
 
@@ -43,7 +44,6 @@ const int POINT_SHADOW_WIDTH = 1024;
 const int POINT_SHADOW_HEIGHT = 1024;
 const int SKYBOX_WIDTH = 2048;
 const int SKYBOX_HEIGHT = 2048;
-const int NUM_POINT_LIGHTS = 2;
 
 int frameCount = 0;
 
@@ -136,6 +136,34 @@ int main()
     Shader depthShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_depth.glsl");
     Shader quadShaders("shaders/vertex/vs_quad.glsl", "shaders/fragment/fs_quad.glsl");
 
+    
+    // stbi_set_flip_vertically_on_load(true);
+    
+    // Load models and scene parameters from JSON
+    Scene scene;
+    if (!scene.loadFromJSON("scenes/boat.json")) {
+        std::cerr << "Failed to load scene from JSON." << std::endl;
+        return -1;
+    }
+
+    const int NUM_POINT_LIGHTS = scene.pointLights.size();
+    
+    // Light cube vertices
+    GLuint cubeVBO, cubeVAO;
+    generateCube(cubeVBO, cubeVAO);
+    
+    // Skybox
+    GLuint skyboxCubemap, captureFBO;
+    if (!scene.skyboxPath.empty()) {
+        if (scene.skyboxPath.size() > 1) {
+            skyboxCubemap = loadCubemap(scene.skyboxPath);
+        } 
+        else {
+            GLuint skyboxEquirectangular = loadEquirectangularMap(scene.skyboxPath[0].c_str());
+            generateSkybox(cubeVBO, cubeVAO, skyboxEquirectangular, skyboxCubemap, captureFBO, er2cubemapShaders);
+        }
+    }
+    
     // Pre-allocate uniform strings
     std::string shadowMatrixNames[6];
     for (int j = 0; j < 6; ++j) {
@@ -152,98 +180,45 @@ int main()
         skyboxMatrixNames[i] = "skyboxTransforms[" + std::to_string(i) + "]";
     }
 
-    //stbi_set_flip_vertically_on_load(true);
-    
-	// Load models
-    std::cout << "Loading models...\n";
-	Model scene("assets/models/modern-bedroom-edit/source/bedroom3.fbx");
-    Model lamp("assets/models/ceiling-fan/source/ceiling_fan.fbx");
-    
-    // Light cube vertices
-    GLuint cubeVBO, cubeVAO;
-    generateCube(cubeVBO, cubeVAO);
-
-    // Skybox from equirectangular image
-    GLuint skyboxEquirectangular = loadEquirectangularMap("assets/skybox/space_8x.png");
-    GLuint skyboxCubemap, captureFBO;
-    generateSkybox(cubeVBO, cubeVAO, skyboxEquirectangular, skyboxCubemap, captureFBO, er2cubemapShaders);
-
     // Debug line for directional light
     GLuint lineVBO, lineVAO;
     generateLine(lineVBO, lineVAO);
-
+    
     // Final render target: screen-filling HDR quad
     GLuint quadFBO, quadVBO, quadVAO, quadTexture;
     generateQuad(quadFBO, quadVBO, quadVAO, quadTexture);
-
+    
     // Directional light shadow map FBO and texture
     GLuint shadowMapFBO, shadowMap;
     generateShadowMap(shadowMapFBO, shadowMap);
-
+    
     // Point light shadow cubemap FBOs and textures
     GLuint shadowCubemapFBO[NUM_POINT_LIGHTS];
     GLuint shadowCubemap[NUM_POINT_LIGHTS];
-
+    
     for (int i = 0; i < NUM_POINT_LIGHTS; ++i)
     {
         generateShadowCubemap(shadowCubemapFBO[i], shadowCubemap[i]);
     }
-
-    // Define model transformations
-    glm::vec3 scenePos = glm::vec3(-0.8f, -2.0f, -6.0f);
-    glm::vec3 sceneScale = glm::vec3(0.03f);
-    float sceneRotation = 0.0f;
-    glm::vec3 sceneRotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 lampPos = glm::vec3(1.55f, 16.2f, -3.0f);
-    glm::vec3 lampScale = glm::vec3(0.075f);
-    glm::vec3 pointLightCubeScale = glm::vec3(0.02f);
-
-    // Define light(s)
-    glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 230.0f/255.0f, 200.0f/255.0f);
-    float dirLightIntensity = 50.0f;
-    glm::vec3 dirLightPos = glm::vec3(60.0f, 20.0f, 0.0f);
-    glm::vec3 pointLightPositions[] = {
-        glm::vec3(1.55f, 12.34f, -3.0f), // ceiling fan light
-        glm::vec3(-8.08f, 4.35f, -14.0f), // left bedside lamp
-        glm::vec3(6.84f, 4.35f, -14.0f), // right bedside lamp
-        glm::vec3(15.0f, 3.5f, 0.07f) // laptop light
-    };
-
-    glm::vec3 pointLightColor1 = glm::vec3(250.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
-    float pointLight1Intensity = 300.0f;
-    glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight2Intensity = 50.0f;
-    glm::vec3 pointLightColor3 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight3Intensity = 50.0f;
-    glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
-    float pointLight4Intensity = 10.0f;
-
-    // -----------------------------------------
-    // 1. Setup Phong Shaders
-    // -----------------------------------------
+    
+    // Configure shaders
     phongShaders.use();
     phongShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
     phongShaders.setFloat("far_plane", 25.0f);
-    phongShaders.setFloat("globalAmbient", globalAmbient);
+    phongShaders.setFloat("globalAmbient", scene.globalAmbient);
 
     for (int i = 0; i < 10; i++) { 
         phongShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
     }
 
-    phongShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
-    phongShaders.setVec3("dirLight.position", dirLightPos);
-    phongShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
-    phongShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
-    phongShaders.setVec3("pointLights[1].color", srgbToLinear(pointLightColor2) * pointLight2Intensity);
-    phongShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
-    phongShaders.setVec3("pointLights[2].color", srgbToLinear(pointLightColor3) * pointLight3Intensity);
-    phongShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-    phongShaders.setVec3("pointLights[3].color", srgbToLinear(pointLightColor4) * pointLight4Intensity);
-    phongShaders.setVec3("pointLights[3].position", pointLightPositions[3]);
+    phongShaders.setVec3("dirLight.color", srgbToLinear(scene.dirLight.color) * scene.dirLight.intensity);
+    phongShaders.setVec3("dirLight.position", scene.dirLight.position);
 
-    // -----------------------------------------
-    // 2. Setup PBR Shaders
-    // -----------------------------------------
+    for (size_t i = 0; i < scene.pointLights.size(); i++) {
+        phongShaders.setVec3("pointLights[" + std::to_string(i) + "].color", srgbToLinear(scene.pointLights[i].color) * scene.pointLights[i].intensity);
+        phongShaders.setVec3("pointLights[" + std::to_string(i) + "].position", scene.pointLights[i].position);
+    }
+
     pbrShaders.use();
     pbrShaders.setInt("numPointLights", NUM_POINT_LIGHTS); 
     pbrShaders.setFloat("far_plane", 25.0f);
@@ -253,16 +228,13 @@ int main()
         pbrShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
     }
 
-    pbrShaders.setVec3("dirLight.color", srgbToLinear(dirLightColor) * dirLightIntensity);
-    pbrShaders.setVec3("dirLight.position", dirLightPos);
-    pbrShaders.setVec3("pointLights[0].color", srgbToLinear(pointLightColor1) * pointLight1Intensity);
-    pbrShaders.setVec3("pointLights[0].position", pointLightPositions[0]);
-    pbrShaders.setVec3("pointLights[1].color", srgbToLinear(pointLightColor2) * pointLight2Intensity);
-    pbrShaders.setVec3("pointLights[1].position", pointLightPositions[1]);
-    pbrShaders.setVec3("pointLights[2].color", srgbToLinear(pointLightColor3) * pointLight3Intensity);
-    pbrShaders.setVec3("pointLights[2].position", pointLightPositions[2]);
-    pbrShaders.setVec3("pointLights[3].color", srgbToLinear(pointLightColor4) * pointLight4Intensity);
-    pbrShaders.setVec3("pointLights[3].position", pointLightPositions[3]);
+    pbrShaders.setVec3("dirLight.color", srgbToLinear(scene.dirLight.color) * scene.dirLight.intensity);
+    pbrShaders.setVec3("dirLight.position", scene.dirLight.position);
+
+    for (size_t i = 0; i < scene.pointLights.size(); i++) {
+        pbrShaders.setVec3("pointLights[" + std::to_string(i) + "].color", srgbToLinear(scene.pointLights[i].color) * scene.pointLights[i].intensity);
+        pbrShaders.setVec3("pointLights[" + std::to_string(i) + "].position", scene.pointLights[i].position);
+    }
 
     skyboxShaders.use();
     skyboxShaders.setInt("skybox", 0);
@@ -297,6 +269,7 @@ int main()
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        scene.update(deltaTime);
 
         // FPS counter
         frameCount++;
@@ -315,7 +288,7 @@ int main()
 
             // 1.1: Render directional light shadow map
             glm::mat4 lightProjection = glm::ortho(orthoScale * -10.0f, orthoScale * 10.0f, orthoScale * -10.0f, orthoScale * 10.0f, NEAR_PLANE, FAR_PLANE);
-            glm::mat4 lightView = glm::lookAt(dirLightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            glm::mat4 lightView = glm::lookAt(scene.dirLight.position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             glm::mat4 lightSpaceMatrix = lightProjection * lightView;
             
             glCullFace(GL_FRONT);
@@ -329,19 +302,12 @@ int main()
             glActiveTexture(GL_TEXTURE0);
             
             // Render scene with loaded models
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, scenePos);
-            model = glm::scale(model, sceneScale);
-            model = glm::rotate(model, sceneRotation, sceneRotationAxis);
-            dirShadowShaders.setMat4("model", model);
-            scene.drawOpaque(dirShadowShaders);
-
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, lampPos);
-            model = glm::scale(model, lampScale);
-            model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-            dirShadowShaders.setMat4("model", model);
-            lamp.draw(dirShadowShaders);
+            for (const auto& entity : scene.entities) {
+                glm::mat4 modelMatrix = entity.transform.getMatrix();
+                glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
+                dirShadowShaders.setMat4("model", modelMatrix);
+                entity.model->drawOpaque(dirShadowShaders);
+            }
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -364,7 +330,7 @@ int main()
             {
                 for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
 
-                    glm::vec3 lightPos = pointLightPositions[i];
+                    glm::vec3 lightPos = scene.pointLights[i].position;
                     float aspect = (float) POINT_SHADOW_WIDTH / (float) POINT_SHADOW_HEIGHT;
                     float near = 0.1f;
                     float far = 25.0f;
@@ -398,19 +364,11 @@ int main()
                     glActiveTexture(GL_TEXTURE0);
 
                     // Render scene with loaded models
-                    model = glm::mat4(1.0f);
-                    model = glm::translate(model, scenePos);
-                    model = glm::scale(model, sceneScale);
-                    model = glm::rotate(model, sceneRotation, sceneRotationAxis);
-                    pointShadowShaders.setMat4("model", model);
-                    scene.drawOpaque(pointShadowShaders);
-
-                    model =  glm::mat4(1.0f);
-                    model = glm::translate(model, lampPos);
-                    model = glm::scale(model, lampScale);
-                    model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-                    pointShadowShaders.setMat4("model", model);
-                    lamp.draw(pointShadowShaders);
+                    for (const auto& entity : scene.entities) {
+                        glm::mat4 modelMatrix = entity.transform.getMatrix();
+                        pointShadowShaders.setMat4("model", modelMatrix);
+                        entity.model->drawOpaque(pointShadowShaders);
+                    }
 
                     glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 } 
@@ -442,132 +400,81 @@ int main()
         glm::mat4 view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.worldUp);
         glm::mat4 projection = glm::mat4(1.0f);
         projection = glm::perspective(glm::radians(cam.fov), (float) WINDOW_WIDTH / (float) WINDOW_HEIGHT, NEAR_PLANE, FAR_PLANE);
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, scenePos);
-        model = glm::scale(model, sceneScale);
-        model = glm::rotate(model, sceneRotation, sceneRotationAxis);
-        glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
-        if (shaderType == PHONG) {
-            phongShaders.use();
-            phongShaders.setMat4("projection", projection);
-            phongShaders.setMat4("view", view);
-            phongShaders.setVec3("viewPos", cam.pos);
-            phongShaders.setMat4("model", model);
-            phongShaders.setMat3("normalMatrix", normalMatrix);
-            phongShaders.setFloat("transparency", 1.0f);
-            scene.drawOpaque(phongShaders);
-        }
-        else if (shaderType == PBR) {
-            pbrShaders.use();
-            pbrShaders.setMat4("projection", projection);
-            pbrShaders.setMat4("view", view);
-            pbrShaders.setVec3("viewPos", cam.pos);
-            pbrShaders.setMat4("model", model);
-            pbrShaders.setMat3("normalMatrix", normalMatrix);
-            pbrShaders.setFloat("transparency", 1.0f);
-            scene.drawOpaque(pbrShaders);
-        }
-        else if (shaderType == CONSTANT) {
-            constantShaders.use();
-            constantShaders.setMat4("projection", projection);
-            constantShaders.setMat4("view", view);
-            constantShaders.setMat4("model", model);
-            scene.drawOpaque(constantShaders);
-        }
-        else if (shaderType == DEPTH) {
-            depthShaders.use();
-            depthShaders.setFloat("near", NEAR_PLANE);
-            depthShaders.setFloat("far", FAR_PLANE);
-            depthShaders.setMat4("projection", projection);
-            depthShaders.setMat4("view", view);
-            depthShaders.setMat4("model", model);
-            depthShaders.setMat3("normalMatrix", normalMatrix);
-            scene.draw(depthShaders);
+        for (const auto& entity : scene.entities) {
+            glm::mat4 model = entity.transform.getMatrix();
+            glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+
+            if (shaderType == PHONG) {
+                phongShaders.use();
+                phongShaders.setMat4("projection", projection);
+                phongShaders.setMat4("view", view);
+                phongShaders.setVec3("viewPos", cam.pos);
+                phongShaders.setMat4("model", model);
+                phongShaders.setMat3("normalMatrix", normalMatrix);
+                phongShaders.setFloat("transparency", 1.0f);
+                entity.model->drawOpaque(phongShaders);
+            }
+            else if (shaderType == PBR) {
+                pbrShaders.use();
+                pbrShaders.setMat4("projection", projection);
+                pbrShaders.setMat4("view", view);
+                pbrShaders.setVec3("viewPos", cam.pos);
+                pbrShaders.setMat4("model", model);
+                pbrShaders.setMat3("normalMatrix", normalMatrix);
+                pbrShaders.setFloat("transparency", 1.0f);
+                entity.model->drawOpaque(pbrShaders);
+            }
+            else if (shaderType == CONSTANT) {
+                constantShaders.use();
+                constantShaders.setMat4("projection", projection);
+                constantShaders.setMat4("view", view);
+                constantShaders.setMat4("model", model);
+                entity.model->draw(constantShaders);
+            }
+            else if (shaderType == DEPTH) {
+                depthShaders.use();
+                depthShaders.setFloat("near", NEAR_PLANE);
+                depthShaders.setFloat("far", FAR_PLANE);
+                depthShaders.setMat4("projection", projection);
+                depthShaders.setMat4("view", view);
+                depthShaders.setMat4("model", model);
+                depthShaders.setMat3("normalMatrix", normalMatrix);
+                entity.model->draw(depthShaders);
+            }
         }
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, lampPos);
-        model = glm::scale(model, lampScale);
-        model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float) glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
-
-        if (shaderType == PHONG) {
-            phongShaders.setMat4("model", model);
-            phongShaders.setMat3("normalMatrix", normalMatrix);
-            phongShaders.setFloat("transparency", 1.0f);
-            lamp.draw(phongShaders);
-        }
-        else if (shaderType == PBR) {
-            pbrShaders.setMat4("model", model);
-            pbrShaders.setMat3("normalMatrix", normalMatrix);
-            pbrShaders.setFloat("transparency", 1.0f);
-            lamp.draw(pbrShaders);
-        }
-        else if (shaderType == CONSTANT) {
-            constantShaders.setMat4("model", model);
-            constantShaders.setMat3("normalMatrix", normalMatrix);
-            constantShaders.setFloat("transparency", 1.0f);
-            lamp.draw(constantShaders);
-        }
-        else if (shaderType == DEPTH) {
-            depthShaders.setMat4("model", model);
-            depthShaders.setMat3("normalMatrix", normalMatrix);
-            lamp.draw(depthShaders);
-        }
         ////////////////////////////////////////////
 		// RENDER LIGHT SOURCES FOR VISUALIZATION //
         ////////////////////////////////////////////
+        glm::vec3 pointLightCubeScale = glm::vec3(0.02f);
 
         if (debugToggle) {
             lightSourceShaders.use();
             lightSourceShaders.setMat4("projection", projection);
             lightSourceShaders.setMat4("view", view);
 
-            // Point lights
-            lightSourceShaders.setVec3("lightColor", pointLightColor1);
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, pointLightPositions[0]);
-            model = glm::scale(model, pointLightCubeScale);
-            lightSourceShaders.setMat4("model", model);
-            glBindVertexArray(cubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            lightSourceShaders.setVec3("lightColor", pointLightColor2);
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, pointLightPositions[1]);
-            model = glm::scale(model, pointLightCubeScale);
-            lightSourceShaders.setMat4("model", model);
-            glBindVertexArray(cubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            lightSourceShaders.setVec3("lightColor", pointLightColor3);
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, pointLightPositions[2]);
-            model = glm::scale(model, pointLightCubeScale);
-            lightSourceShaders.setMat4("model", model);
-            glBindVertexArray(cubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            lightSourceShaders.setVec3("lightColor", pointLightColor4);
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, pointLightPositions[3]);
-            model = glm::scale(model, pointLightCubeScale);
-            lightSourceShaders.setMat4("model", model);
-            glBindVertexArray(cubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            for (size_t i = 0; i < scene.pointLights.size(); i++) {
+                lightSourceShaders.setVec3("lightColor", scene.pointLights[i].color * scene.pointLights[i].intensity);
+                glm::mat4 model = glm::mat4(1.0f);
+                model = glm::translate(model, scene.pointLights[i].position);
+                model = glm::scale(model, pointLightCubeScale);
+                lightSourceShaders.setMat4("model", model);
+                glBindVertexArray(cubeVAO);
+                glDrawArrays(GL_TRIANGLES, 0, 36);
+            }
 
             // Directional light
-            lightSourceShaders.setVec3("lightColor", dirLightColor);
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, dirLightPos); 
+            lightSourceShaders.setVec3("lightColor", scene.dirLight.color * scene.dirLight.intensity);
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, scene.dirLight.position); 
             // model = glm::scale(model, glm::vec3(1.0f));
             lightSourceShaders.setMat4("model", model);
             glBindVertexArray(cubeVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
 
             // // Debug line
-            glm::vec3 lineStart = dirLightPos;
+            glm::vec3 lineStart = scene.dirLight.position;
             glm::vec3 lineEnd = glm::vec3(0.0f, 0.0f, 0.0f); // Pointing towards the origin
 
             float lineVertices[] = {
@@ -592,14 +499,14 @@ int main()
         ////////////////////////////////////
         // 3. PASS: RENDER SKYBOX TO QUAD //
         ////////////////////////////////////
-        if ((skyboxToggle && shaderType == PHONG) or (skyboxToggle && shaderType == PBR))
+        if ((!scene.skyboxPath.empty() && shaderType == PHONG) or (!scene.skyboxPath.empty() && shaderType == PBR))
         {
             glDepthFunc(GL_LEQUAL);
             glDisable(GL_CULL_FACE);
 
             skyboxShaders.use();
-            view = glm::mat4(glm::mat3(view));
-            skyboxShaders.setMat4("view", view);
+            glm::mat4 skyboxView = glm::mat4(glm::mat3(view));
+            skyboxShaders.setMat4("view", skyboxView);
             glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             skyboxShaders.setMat4("rotation", rotation);
             skyboxShaders.setMat4("projection", projection);
@@ -618,27 +525,31 @@ int main()
         /////////////////////////////////////////
         glDepthMask(GL_FALSE);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, scenePos);
-        model = glm::scale(model, sceneScale);
-        model = glm::rotate(model, sceneRotation, sceneRotationAxis);
-        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        for (const auto& entity : scene.entities) {
+            glm::mat4 model = entity.transform.getMatrix();
+            glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
-        if (shaderType == PHONG) {
-            phongShaders.use();
-            phongShaders.setMat4("model", model);
-            phongShaders.setMat3("normalMatrix", normalMatrix);
-            scene.drawTransparent(phongShaders);
-        }
-        else if (shaderType == PBR) {
-            pbrShaders.use();
-            pbrShaders.setMat4("model", model);
-            pbrShaders.setMat3("normalMatrix", normalMatrix);
-            scene.drawTransparent(pbrShaders);
+            if (shaderType == PHONG) {
+                phongShaders.use();
+                phongShaders.setMat4("projection", projection);
+                phongShaders.setMat4("view", view);
+                phongShaders.setVec3("viewPos", cam.pos);
+                phongShaders.setMat4("model", model);
+                phongShaders.setMat3("normalMatrix", normalMatrix);
+                entity.model->drawTransparent(phongShaders);
+            }
+            else if (shaderType == PBR) {
+                pbrShaders.use();
+                pbrShaders.setMat4("projection", projection);
+                pbrShaders.setMat4("view", view);
+                pbrShaders.setVec3("viewPos", cam.pos);
+                pbrShaders.setMat4("model", model);
+                pbrShaders.setMat3("normalMatrix", normalMatrix);
+                entity.model->drawTransparent(pbrShaders);
+            }
         }
 
         glDepthMask(GL_TRUE);
-
 
         ////////////////////////////////////
         // 5. PASS: RENDER QUAD TO SCREEN //
@@ -652,7 +563,6 @@ int main()
         glBindTexture(GL_TEXTURE_2D, quadTexture);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glEnable(GL_DEPTH_TEST);
-
 
         glFinish();
         glfwSwapBuffers(window);
@@ -898,7 +808,7 @@ void generateLine(GLuint& lineVBO, GLuint& lineVAO)
     glBindVertexArray(0);
 }
 
-GLuint loadCubemap(vector<std::string> faces)
+GLuint loadCubemap(const std::vector<std::string>& faces)
 {
     GLuint textureID;
     glGenTextures(1, &textureID);

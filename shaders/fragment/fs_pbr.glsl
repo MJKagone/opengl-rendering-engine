@@ -19,6 +19,7 @@ uniform sampler2D texture_emission1;
 uniform sampler2D texture_metallic1;
 uniform sampler2D texture_roughness1;
 uniform sampler2D texture_ao1;
+uniform bool hasEmbeddedTextures;
 uniform vec3 material_diffuseColor;
 uniform bool hasDiffuseTexture;
 uniform bool hasSpecularTexture;
@@ -212,20 +213,35 @@ void main()
 	}
     vec4 albedoTex = hasDiffuseTexture ? texture(texture_diffuse1, vTexCoords) : vec4(material_diffuseColor, 1.0f);
 	vec3 albedo = albedoTex.rgb;
-	float alpha = albedoTex.a * transparency;
-	if (alpha < 0.1f) {
-		discard; // discard fragments with low alpha for transparency
-	}
-	float roughness = hasRoughnessTexture ? texture(texture_roughness1, vTexCoords).r : 0.9f;
-	float ao = hasAOTexture ? texture(texture_ao1, vTexCoords).r : 1.0f;
-	vec3 emissionTex = vec3(texture(texture_emission1, vTexCoords));
+	// Only discard if the material was flagged with transparency/alpha testing
+    float alpha = transparency;
+    if (transparency < 0.99f) {
+        alpha *= albedoTex.a;
+        if (alpha < 0.1f) {
+            discard;
+        }
+    }
+	vec3 emissionTex = hasEmissionTexture ? texture(texture_emission1, vTexCoords).rgb : vec3(0.0f);
+	// Channel swizzling (disrete vs embedded textures)
+    float roughness = 0.9f;
+    float metallic = 0.0f;
+    float ao = 1.0f;
 
-	// Disambiguate Workflow
-	float metallic = 0.0f;
-	vec3 F0 = vec3(0.04f);
+    if (hasEmbeddedTextures) {
+        // glTF PBR standard: Green = Roughness, Blue = Metallic, Red = AO
+        if (hasRoughnessTexture) roughness = texture(texture_roughness1, vTexCoords).g;
+        if (hasMetallicTexture) metallic = texture(texture_metallic1, vTexCoords).b;
+        if (hasAOTexture) ao = texture(texture_ao1, vTexCoords).r;
+    } else {
+        // Standard discrete textures: scalar values in Red channel
+        if (hasRoughnessTexture) roughness = texture(texture_roughness1, vTexCoords).r;
+        if (hasMetallicTexture) metallic = texture(texture_metallic1, vTexCoords).r;
+        if (hasAOTexture) ao = texture(texture_ao1, vTexCoords).r;
+    }
 
-	if (hasMetallicTexture) {
-		metallic = texture(texture_metallic1, vTexCoords).r;
+	vec3 F0 = vec3(0.04f); // Default reflectance for dielectrics
+	if (hasMetallicTexture || hasEmbeddedTextures) {
+		metallic = texture(texture_metallic1, vTexCoords).b;
 		if (hasSpecularTexture) {
 			// Both metallic and specular maps: use metallic workflow with specular factor
 			float specFactor = texture(texture_specular1, vTexCoords).r;

@@ -54,9 +54,10 @@ public:
     bool hasRoughnessTexture;
     bool hasAOTexture;
     bool hasEmissionTexture;
+    bool hasEmbeddedTextures;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, float shininess = 32.0f, float opacity = 1.0f, bool isTransparent = false)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, bool hasEmbeddedTextures = false, float shininess = 32.0f, float opacity = 1.0f, bool isTransparent = false)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -72,6 +73,7 @@ public:
         this->shininess = shininess;
         this->opacity = opacity;
         this->isTransparent = isTransparent;
+        this->hasEmbeddedTextures = hasEmbeddedTextures;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
@@ -127,6 +129,7 @@ public:
         shader.setBool("hasMetallicTexture", hasMetallicTexture);
         shader.setBool("hasRoughnessTexture", hasRoughnessTexture);
         shader.setBool("hasAOTexture", hasAOTexture);
+        shader.setBool("hasEmbeddedTextures", hasEmbeddedTextures);
         shader.setVec3("material_diffuseColor", diffuseColor);
         shader.setFloat("shininess", this->shininess);
         shader.setFloat("transparency", this->opacity);

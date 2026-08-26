@@ -7,23 +7,23 @@
   "directionalLight": {
     "position": [60.0, 20.0, 0.0],
     "color": [255.0, 230.0, 200.0],
-    "intensity": 50.0
+    "intensity": 20.0
   },
   "pointLights": [
     {
       "position": [1.55, 12.34, -3.0],
       "color": [255.0, 200.0, 180.0],
-      "intensity": 300.0
+      "intensity": 100.0
     },
     {
       "position": [-8.08, 4.35, -14.0],
       "color": [240.0, 180.0, 150.0],
-      "intensity": 50.0
+      "intensity": 20.0
     },
     {
       "position": [6.84, 4.35, -14.0],
       "color": [240.0, 180.0, 150.0],
-      "intensity": 50.0
+      "intensity": 20.0
     }
   ],
   "entities": [
@@ -39,6 +39,7 @@
       "modelPath": "assets/models/ceiling-fan/source/ceiling_fan.fbx",
       "position": [1.55, 16.2, -3.0],
       "rotation": [0.0, 0.0, 0.0],
+      "rotationVelocity": [0.0, 275.0, 0.0],
       "scale": [0.075, 0.075, 0.075]
     }
   ]

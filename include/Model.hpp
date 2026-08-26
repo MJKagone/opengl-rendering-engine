@@ -20,9 +20,14 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <filesystem>
+#include <algorithm>
+
+namespace fs = std::filesystem;
 using namespace std;
 
 GLuint TextureFromFile(const char *path, const string &directory, bool gamma);
+GLuint TextureFromEmbedded(const aiTexture *embeddedTex, bool gamma);
 
 class Model 
 {
@@ -34,6 +39,7 @@ public:
     vector<Mesh> transparentMeshes;
     string directory;
     bool gammaCorrection;
+    bool hasEmbeddedTextures;
 
     // constructor, expects a filepath to a 3D model.
     Model(string const &path, bool gamma = true) : gammaCorrection(gamma)
@@ -64,6 +70,11 @@ private:
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const &path)
     {
+        // Check format from extension
+        string lowerPath = path;
+        std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::tolower);
+        hasEmbeddedTextures = (lowerPath.rfind(".glb") != string::npos || lowerPath.rfind(".gltf") != string::npos);
+
         // read file via ASSIMP
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_PreTransformVertices);
@@ -172,42 +183,42 @@ private:
         // normal: texture_normalN
 
         // 1. diffuse maps
-        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", this->gammaCorrection);
+        vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", this->gammaCorrection, scene);
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
         bool hasDiffuseTexture = !diffuseMaps.empty();
         // 2. specular maps
-        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", false);
+        vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", false, scene);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         bool hasSpecularTexture = !specularMaps.empty();
         // 3. normal maps
-        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", false);
+        std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", false, scene);
         // Fallback to HEIGHT if NORMALS is empty (common for .obj files)
         if (normalMaps.empty()) {
-            normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", false);
+            normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal", false, scene);
         }
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
         bool hasNormalTexture = !normalMaps.empty();
         // 4. height maps
-        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", false);
+        std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height", false, scene);
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
         // 5. emission maps
-        std::vector<Texture> emissionMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emission", this->gammaCorrection);
+        std::vector<Texture> emissionMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emission", this->gammaCorrection, scene);
         textures.insert(textures.end(), emissionMaps.begin(), emissionMaps.end());
         bool hasEmissionTexture = !emissionMaps.empty();
         // 6. metallic maps
-        std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", false);
+        std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", false, scene);
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
         bool hasMetallicTexture = !metallicMaps.empty();
         // 7. roughness maps
-        std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", false);
+        std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", false, scene);
         // FBX fallback: roughness packed into shininess
         if (roughnessMaps.empty()) {
-            roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", false);
+            roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", false, scene);
         }
         textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         bool hasRoughnessTexture = !roughnessMaps.empty();
         // 8. ambient occlusion maps
-        std::vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao", false);
+        std::vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao", false, scene);
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
         bool hasAOTexture = !aoMaps.empty();
 
@@ -255,13 +266,13 @@ private:
         bool isTransparent = (opacity < 0.99f);
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, shininess, opacity, isTransparent);
+        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, hasEmbeddedTextures, shininess, opacity, isTransparent);
         
     }
 
     // checks all material textures of a given type and loads the textures if they're not loaded yet.
     // the required info is returned as a Texture struct.
-    vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, string typeName, bool gamma)
+    vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, string typeName, bool gamma, const aiScene* scene)
     {
         vector<Texture> textures;
         for(int i = 0; i < mat->GetTextureCount(type); i++)
@@ -280,8 +291,16 @@ private:
                 }
             }
             if(!skip)
-            {   // if texture hasn't been loaded already, load it
-                GLuint textureID = TextureFromFile(str.C_Str(), this->directory, gamma);
+            {   
+                GLuint textureID = 0;
+
+                // Check for embedded textures (*0, *1)
+                const aiTexture* embedded = (scene != nullptr) ? scene->GetEmbeddedTexture(str.C_Str()) : nullptr;
+                if (embedded) {
+                    textureID = TextureFromEmbedded(embedded, gamma);
+                } else {
+                    textureID = TextureFromFile(str.C_Str(), this->directory, gamma);
+                }
                 if (textureID != 0)
                 {
                     Texture texture;
@@ -298,73 +317,108 @@ private:
 };
 
 
+// Helper: Normalize string (lowercase, replace spaces with underscores, strip common export suffixes)
+std::string normalizeFilename(std::string name) {
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    std::replace(name.begin(), name.end(), ' ', '_');
+    
+    // Strip common export suffixes
+    const std::string suffix1 = "_(personalizado)";
+    const std::string suffix2 = "_(personalizad";
+    size_t pos;
+    while ((pos = name.find(suffix1)) != std::string::npos) name.erase(pos, suffix1.length());
+    while ((pos = name.find(suffix2)) != std::string::npos) name.erase(pos, suffix2.length());
+    
+    return name;
+}
+
 GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
 {
     string rawPath = string(path);
-    std::replace(rawPath.begin(), rawPath.end(), '\\', '/'); // Standardize slashes
+    std::replace(rawPath.begin(), rawPath.end(), '\\', '/');
 
-    // 1. Extract just the filename (e.g., "Air_BaseColor.jpg")
     string filename = rawPath;
     size_t lastSlash = filename.find_last_of('/');
     if (lastSlash != string::npos) {
         filename = filename.substr(lastSlash + 1);
     }
 
-    // 2. Determine a "base" directory assuming the model is in a "source" subfolder
     string baseDir = directory;
     size_t dirLastSlash = baseDir.find_last_of('/');
     if (dirLastSlash != string::npos) {
-        baseDir = baseDir.substr(0, dirLastSlash); // e.g., "assets/modern-bedroom"
+        baseDir = baseDir.substr(0, dirLastSlash);
     }
 
-    // 3. Build a list of candidate paths to try
+    // 1. Standard candidate list
     std::vector<string> pathsToTry = {
-        directory + '/' + rawPath,                  // The exact path Assimp requested
-        directory + '/' + filename,                 // Just the file in the model's directory
-        baseDir + "/textures/" + filename           // The file in a sibling "textures" folder
+        directory + '/' + rawPath,
+        directory + '/' + filename,
+        baseDir + "/textures/" + rawPath,
+        baseDir + "/textures/" + filename,
+        baseDir + '/' + rawPath,
+        baseDir + '/' + filename
     };
 
-    // 4. Create fallback extensions (.jpg <-> .jpeg, .psd -> .png)
+    auto endsWith = [](const std::string& str, const std::string& suffix) {
+        return str.size() >= suffix.size() && 
+               str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+    };
+
+    // Extension permutations (.jpg <-> .jpeg, .png, etc.)
     std::vector<string> expandedPaths;
     for (const string& p : pathsToTry) {
         expandedPaths.push_back(p);
-        
-        // If it asks for .jpg, also try .jpeg
-        if (p.length() >= 4 && p.substr(p.length() - 4) == ".jpg") {
-            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpeg");
-        } 
-        // If it asks for .jpeg, also try .jpg
-        else if (p.length() >= 5 && p.substr(p.length() - 5) == ".jpeg") {
-            expandedPaths.push_back(p.substr(0, p.length() - 5) + ".jpg");
-        }
-        // If it asks for .psd, try .png
-        else if (p.length() >= 4 && p.substr(p.length() - 4) == ".psd") {
-            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".png");
-        }
-        else if (p.length() >= 4 && p.substr(p.length() - 4) == ".png") {
+        if (endsWith(p, ".jpg"))  expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpeg");
+        if (endsWith(p, ".jpeg")) expandedPaths.push_back(p.substr(0, p.length() - 5) + ".jpg");
+        if (endsWith(p, ".png")) {
             expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpg");
             expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpeg");
-        }
-        else if (p.length() >= 5 && p.substr(p.length() - 5) == ".webp") {
-            expandedPaths.push_back(p.substr(0, p.length() - 5) + ".png");
-            expandedPaths.push_back(p.substr(0, p.length() - 5) + ".jpg");
-        }
-        else if (p.length() >= 4 && p.substr(p.length() - 4) == ".exr") {
-            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".png");
-            expandedPaths.push_back(p.substr(0, p.length() - 4) + ".jpg");
         }
     }
 
-    // 5. Try loading the texture from our list of candidate paths
     int width, height, nrComponents;
     unsigned char *data = nullptr;
-    string successfulPath = "";
 
     for (const string& p : expandedPaths) {
         data = stbi_load(p.c_str(), &width, &height, &nrComponents, 0);
-        if (data) {
-            successfulPath = p;
-            break; // Stop looking once we successfully load the image
+        if (data) break;
+    }
+
+    // 2. Fuzzy directory scan fallback if exact matches fail
+    if (!data) {
+        string searchDir = baseDir + "/textures";
+        if (fs::exists(searchDir) && fs::is_directory(searchDir)) {
+            string normTarget = normalizeFilename(filename);
+            string targetStem = normalizeFilename(fs::path(filename).stem().string());
+
+            // Handle channel abbreviation mappings (_basecolor -> _b, etc.)
+            string abbrevStem = targetStem;
+            for (const auto& [full, abbr] : {
+                std::pair{"_basecolor", "_b"}, {"_normal", "_n"},
+                {"_roughness", "_r"}, {"_emissive", "_e"}, {"_metallic", "_m"}
+            }) {
+                size_t p = abbrevStem.rfind(full);
+                if (p != std::string::npos) {
+                    abbrevStem.replace(p, strlen(full), abbr);
+                    break;
+                }
+            }
+
+            for (const auto& entry : fs::directory_iterator(searchDir)) {
+                if (!entry.is_regular_file()) continue;
+                string entryName = normalizeFilename(entry.path().filename().string());
+                string entryStem = normalizeFilename(entry.path().stem().string());
+
+                // Match against normalized filename, stem, abbreviated stem, or prefix match
+                if (entryName == normTarget || 
+                    entryStem == targetStem || 
+                    entryStem == abbrevStem ||
+                    (targetStem.length() > 15 && entryStem.rfind(targetStem.substr(0, 15), 0) == 0)) 
+                {
+                    data = stbi_load(entry.path().string().c_str(), &width, &height, &nrComponents, 0);
+                    if (data) break;
+                }
+            }
         }
     }
 
@@ -415,4 +469,65 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
         stbi_image_free(data);
         return 0;
     }
+}
+
+GLuint TextureFromEmbedded(const aiTexture *embeddedTex, bool gamma)
+{
+    int width, height, nrComponents;
+    unsigned char *data = nullptr;
+
+    if (embeddedTex->mHeight == 0) {
+        // Compressed image buffer (PNG / JPEG inside .glb container)
+        data = stbi_load_from_memory(
+            reinterpret_cast<const unsigned char*>(embeddedTex->pcData),
+            embeddedTex->mWidth, // mWidth holds buffer byte length when mHeight is 0
+            &width, &height, &nrComponents, 0
+        );
+    } else {
+        // Raw uncompressed texel array
+        data = stbi_load_from_memory(
+            reinterpret_cast<const unsigned char*>(embeddedTex->pcData),
+            embeddedTex->mWidth * embeddedTex->mHeight * 4,
+            &width, &height, &nrComponents, 0
+        );
+    }
+
+    if (!data) {
+        std::cout << "Failed to decode embedded texture from memory." << std::endl;
+        return 0;
+    }
+
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    
+    GLenum internalFormat = 0;
+    GLenum dataFormat = 0;
+    
+    if (nrComponents == 1) {
+        internalFormat = GL_RED;
+        dataFormat = GL_RED;
+    } else if (nrComponents == 2) {
+        internalFormat = GL_RG;
+        dataFormat = GL_RG;
+    } else if (nrComponents == 3) {
+        internalFormat = gamma ? GL_SRGB : GL_RGB;
+        dataFormat = GL_RGB;
+    } else if (nrComponents == 4) {
+        internalFormat = gamma ? GL_SRGB_ALPHA : GL_RGBA;
+        dataFormat = GL_RGBA;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(data);
+    return textureID;
 }

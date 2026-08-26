@@ -1,0 +1,28 @@
+{
+  "environment": {
+    "exposure": 1.0,
+    "globalAmbient": 0.08,
+    "skyboxPath": [
+      "assets/skybox/right.jpg",
+      "assets/skybox/left.jpg",
+      "assets/skybox/top.jpg",
+      "assets/skybox/bottom.jpg",
+      "assets/skybox/front.jpg",
+      "assets/skybox/back.jpg"
+    ]
+  },
+  "directionalLight": {
+    "position": [60.0, 20.0, 0.0],
+    "color": [255.0, 230.0, 200.0],
+    "intensity": 10.0
+  },
+  "entities": [
+    {
+      "name": "goblet",
+      "modelPath": "assets/models/dutch-ship-medium/source/dutch_ship_medium.glb",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.5, 1.5, 1.5]
+    }
+  ]
+}

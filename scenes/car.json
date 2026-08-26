@@ -1,0 +1,21 @@
+{
+  "environment": {
+    "exposure": 1.0,
+    "globalAmbient": 0.08,
+    "skybox": "assets/skybox/urban_street_04_4k.hdr"
+  },
+  "directionalLight": {
+    "position": [60.0, 20.0, 0.0],
+    "color": [255.0, 230.0, 200.0],
+    "intensity": 10.0
+  },
+  "entities": [
+    {
+      "name": "car",
+      "modelPath": "assets/models/honda/source/honda.fbx",
+      "position": [1.0, 1.0, 1.0],
+      "rotation": [0.0, 50.0, 0.0],
+      "scale": [0.02, 0.02, 0.02]
+    }
+  ]
+}
