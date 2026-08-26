@@ -39,12 +39,14 @@ struct Texture {
 class Mesh {
 public:
     // mesh Data
+    GLuint VAO;
     vector<Vertex> vertices;
     vector<GLuint> indices;
     vector<Texture> textures;
-    GLuint VAO;
     glm::vec3 diffuseColor;
     float shininess;
+    float opacity;
+    bool isTransparent;
     bool hasDiffuseTexture;
     bool hasSpecularTexture;
     bool hasNormalTexture;
@@ -52,8 +54,9 @@ public:
     bool hasRoughnessTexture;
     bool hasAOTexture;
     bool hasEmissionTexture;
+
     // constructor
-    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, float shininess = 32.0f)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, float shininess = 32.0f, float opacity = 1.0f, bool isTransparent = false)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -67,13 +70,15 @@ public:
         this->hasAOTexture = hasAOTexture;
         this->hasEmissionTexture = hasEmissionTexture;
         this->shininess = shininess;
+        this->opacity = opacity;
+        this->isTransparent = isTransparent;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
     }
 
     // render the mesh
-    void Draw(Shader &shader) 
+    void draw(Shader &shader) 
     {
         // bind appropriate textures
         unsigned int diffuseNr  = 1;
@@ -124,7 +129,7 @@ public:
         shader.setBool("hasAOTexture", hasAOTexture);
         shader.setVec3("material_diffuseColor", diffuseColor);
         shader.setFloat("shininess", this->shininess);
-        
+        shader.setFloat("transparency", this->opacity);
         // draw mesh
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);

@@ -1,0 +1,45 @@
+{
+  "environment": {
+    "skybox": "assets/skybox/space_8x.png",
+    "exposure": 1.0,
+    "globalAmbient": 0.08
+  },
+  "directionalLight": {
+    "position": [60.0, 20.0, 0.0],
+    "color": [255.0, 230.0, 200.0],
+    "intensity": 50.0
+  },
+  "pointLights": [
+    {
+      "position": [1.55, 12.34, -3.0],
+      "color": [255.0, 200.0, 180.0],
+      "intensity": 300.0
+    },
+    {
+      "position": [-8.08, 4.35, -14.0],
+      "color": [240.0, 180.0, 150.0],
+      "intensity": 50.0
+    },
+    {
+      "position": [6.84, 4.35, -14.0],
+      "color": [240.0, 180.0, 150.0],
+      "intensity": 50.0
+    }
+  ],
+  "entities": [
+    {
+      "name": "bedroom_structure",
+      "modelPath": "assets/models/modern-bedroom-edit/source/bedroom3.fbx",
+      "position": [-0.8, -2.0, -6.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [0.03, 0.03, 0.03]
+    },
+    {
+      "name": "ceiling_lamp",
+      "modelPath": "assets/models/ceiling-fan/source/ceiling_fan.fbx",
+      "position": [1.55, 16.2, -3.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [0.075, 0.075, 0.075]
+    }
+  ]
+}

@@ -60,7 +60,7 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 		return 0.0f;
 	float closestDepth = texture(shadowMap, projCoords.xy).r;
 	float currentDepth = projCoords.z;
-	float bias = max(0.001f * (1.0f - dot(normal, lightDir)), 0.0001f);
+	// float bias = max(0.001f * (1.0f - dot(normal, lightDir)), 0.0001f);
 	float shadow = 0.0f;
 	vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
 	for(int x = -2; x <= 2; ++x)
@@ -68,7 +68,7 @@ float calcDirShadow(vec4 fragPosLightSpace, vec3 lightDir, vec3 normal)
 		for(int y = -2; y <= 2; ++y)
 		{
 			float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-			shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
+			shadow += currentDepth > pcfDepth ? 1.0f : 0.0f;
 		}
 	}
 	shadow /= 25.0f;
@@ -102,7 +102,7 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 diffuseTex, ve
     vec3 ambient = globalAmbient * diffuseTex;
 
     // Diffuse
-    vec3 lightDir = normalize(light.position - vFragPos);
+    vec3 lightDir = normalize(light.position);
     float diffStrength = max(dot(normal, lightDir), 0.0f);
 
     // Specular

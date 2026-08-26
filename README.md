@@ -10,7 +10,10 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 - [x] **Lighting**:
   * Directional light
   * Multiple point lights with configurable attenuation
+  * Cook-Torrance PBR shading model
   * Blinn-Phong shading model
+  * Constant shading model
+  * Depth-only shader
 - [x] **Shadow mapping**:
   * Calculates directional light shadows using 2D depth maps
   * Calculates omnidirectional point light shadows using depth cubemaps and geometry shaders
@@ -21,7 +24,6 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 - [x] **Gamma correction & HDR**: Gamma correction and high dynamic range rendering with tone mapping
 
 ## Future Plans
-- [ ] **PBR**: More advanced shading models TBD
 - [ ] **Bloom**: Add bloom post-processing effects for light sources
 - [ ] **Saving/loading scenes**: Implement a scene graph and serialization system to save and load complex scenes
 - [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
@@ -40,13 +42,13 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 | **V** | Toggle V-Sync (FPS cap) |
 | **.** | Toggle debug mode (currently: show light sources as cubes) |
 | **Space** | Print current camera position to standard output |
-| **Left/Right** | Switch between shaders (currently: Phong/constant/depth) |
+| **Left/Right** | Switch between shaders (currently: PBR/Phong/constant/depth) |
 | **Up/down** | Increase/decrease camera exposure (HDR) |
 | **Escape** | Close the application | 
 
 ## Dependencies
 
-* **OpenGL 4.6** (3.3 should also work for now)
+* **OpenGL 4.5** (3.3 should also work for now)
 * **GLFW**: Window creation and input handling
 * **GLAD**: OpenGL function pointer loading
 * **GLM**: OpenGL Mathematics library for vector and matrix operations
@@ -69,5 +71,5 @@ utils/
 
 The following open-source assets are used in the video demo:
 
-- [Modern Bedroom by Visthétique](https://sketchfab.com/3d-models/modern-bedroom-b74c53589e334ba1ba4b43883d7c9e21)
+- [Modern Bedroom by Visthétique (edited)](https://sketchfab.com/3d-models/modern-bedroom-b74c53589e334ba1ba4b43883d7c9e21)
 - [Ceiling Fan by Prince Obrymec](https://sketchfab.com/3d-models/ceiling-fan-e16bd23ae02a4d2db89e3a0158821681)

@@ -29,7 +29,9 @@ class Model
 public:
     // model data 
     vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
-    vector<Mesh>    meshes;
+    vector<Mesh> meshes;
+    vector<Mesh> opaqueMeshes;
+    vector<Mesh> transparentMeshes;
     string directory;
     bool gammaCorrection;
 
@@ -40,12 +42,24 @@ public:
     }
 
     // draws the model, and thus all its meshes
-    void Draw(Shader &shader)
+    void draw(Shader &shader)
     {
         for(size_t i = 0; i < meshes.size(); i++)
-            meshes[i].Draw(shader);
+            meshes[i].draw(shader);
     }
-    
+
+    void drawOpaque(Shader &shader)
+    {
+        for(size_t i = 0; i < opaqueMeshes.size(); i++)
+            opaqueMeshes[i].draw(shader);
+    }
+
+    void drawTransparent(Shader &shader)
+    {
+        for(size_t i = 0; i < transparentMeshes.size(); i++)
+            transparentMeshes[i].draw(shader);
+    }
+
 private:
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const &path)
@@ -75,7 +89,12 @@ private:
             // the node object only contains indices to index the actual objects in the scene. 
             // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(processMesh(mesh, scene));
+            Mesh processedMesh = processMesh(mesh, scene);
+            if (processedMesh.isTransparent)
+                transparentMeshes.push_back(processedMesh);
+            else
+                opaqueMeshes.push_back(processedMesh);
+            meshes.push_back(processedMesh);
         }
         // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for(unsigned int i = 0; i < node->mNumChildren; i++)
@@ -226,9 +245,17 @@ private:
                 shininess = extractedShininess * 2.2f;
             }
         }
+
+        float opacity = 1.0f;
+        // Try to get the opacity from the material
+        if (material->Get(AI_MATKEY_OPACITY, opacity) != AI_SUCCESS) {
+            opacity = 1.0f; // Default to fully opaque if not specified
+        }
+
+        bool isTransparent = (opacity < 0.99f);
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, shininess);
+        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, shininess, opacity, isTransparent);
         
     }
 

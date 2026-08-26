@@ -9,6 +9,7 @@
 #include "Camera.hpp"
 #include "Shader.hpp"
 #include "Model.hpp"
+#include "Scene.hpp"
 
 // Function declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -42,7 +43,7 @@ const int POINT_SHADOW_WIDTH = 1024;
 const int POINT_SHADOW_HEIGHT = 1024;
 const int SKYBOX_WIDTH = 2048;
 const int SKYBOX_HEIGHT = 2048;
-const int NUM_POINT_LIGHTS = 3;
+const int NUM_POINT_LIGHTS = 2;
 
 int frameCount = 0;
 
@@ -155,7 +156,7 @@ int main()
     
 	// Load models
     std::cout << "Loading models...\n";
-	Model scene("assets/models/modern-bedroom/source/Bedroom.fbx");
+	Model scene("assets/models/modern-bedroom-edit/source/bedroom3.fbx");
     Model lamp("assets/models/ceiling-fan/source/ceiling_fan.fbx");
     
     // Light cube vertices
@@ -163,7 +164,7 @@ int main()
     generateCube(cubeVBO, cubeVAO);
 
     // Skybox from equirectangular image
-    GLuint skyboxEquirectangular = loadEquirectangularMap("assets/skybox/spacebox_8x.png");
+    GLuint skyboxEquirectangular = loadEquirectangularMap("assets/skybox/space_8x.png");
     GLuint skyboxCubemap, captureFBO;
     generateSkybox(cubeVBO, cubeVAO, skyboxEquirectangular, skyboxCubemap, captureFBO, er2cubemapShaders);
 
@@ -189,31 +190,31 @@ int main()
     }
 
     // Define model transformations
-    glm::vec3 scenePos = glm::vec3(0.0f, -2.0f, 0.0f);
+    glm::vec3 scenePos = glm::vec3(-0.8f, -2.0f, -6.0f);
     glm::vec3 sceneScale = glm::vec3(0.03f);
     float sceneRotation = 0.0f;
     glm::vec3 sceneRotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 lampPos = glm::vec3(4.0f, 16.2f, -3.0f);
+    glm::vec3 lampPos = glm::vec3(1.55f, 16.2f, -3.0f);
     glm::vec3 lampScale = glm::vec3(0.075f);
     glm::vec3 pointLightCubeScale = glm::vec3(0.02f);
 
     // Define light(s)
-    glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 255.0f/255.0f, 240.0f/255.0f);
-    float dirLightIntensity = 25.0f;
+    glm::vec3 dirLightColor = glm::vec3(255.0f/255.0f, 230.0f/255.0f, 200.0f/255.0f);
+    float dirLightIntensity = 50.0f;
     glm::vec3 dirLightPos = glm::vec3(60.0f, 20.0f, 0.0f);
     glm::vec3 pointLightPositions[] = {
+        glm::vec3(1.55f, 12.34f, -3.0f), // ceiling fan light
         glm::vec3(-8.08f, 4.35f, -14.0f), // left bedside lamp
-        glm::vec3(6.85f, 4.35f, -14.0f), // right bedside lamp
-        glm::vec3(4.0f, 12.2f, -3.0f), // ceiling fan light
+        glm::vec3(6.84f, 4.35f, -14.0f), // right bedside lamp
         glm::vec3(15.0f, 3.5f, 0.07f) // laptop light
     };
 
-    glm::vec3 pointLightColor1 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
-    float pointLight1Intensity = 0.0f;
+    glm::vec3 pointLightColor1 = glm::vec3(250.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
+    float pointLight1Intensity = 300.0f;
     glm::vec3 pointLightColor2 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
     float pointLight2Intensity = 50.0f;
-    glm::vec3 pointLightColor3 = glm::vec3(255.0f/255.0f, 200.0f/255.0f, 180.0f/255.0f);
-    float pointLight3Intensity = 500.0f;
+    glm::vec3 pointLightColor3 = glm::vec3(240.0f/255.0f, 180.0f/255.0f, 150.0f/255.0f);
+    float pointLight3Intensity = 50.0f;
     glm::vec3 pointLightColor4 = glm::vec3(100.0f/255.0f, 100.0f/255.0f, 200.0f/255.0f);
     float pointLight4Intensity = 10.0f;
 
@@ -333,14 +334,14 @@ int main()
             model = glm::scale(model, sceneScale);
             model = glm::rotate(model, sceneRotation, sceneRotationAxis);
             dirShadowShaders.setMat4("model", model);
-            scene.Draw(dirShadowShaders);
+            scene.drawOpaque(dirShadowShaders);
 
-            model =  glm::mat4(1.0f);
+            model = glm::mat4(1.0f);
             model = glm::translate(model, lampPos);
             model = glm::scale(model, lampScale);
             model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
             dirShadowShaders.setMat4("model", model);
-            lamp.Draw(dirShadowShaders);
+            lamp.draw(dirShadowShaders);
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -402,17 +403,17 @@ int main()
                     model = glm::scale(model, sceneScale);
                     model = glm::rotate(model, sceneRotation, sceneRotationAxis);
                     pointShadowShaders.setMat4("model", model);
-                    scene.Draw(pointShadowShaders);
+                    scene.drawOpaque(pointShadowShaders);
 
                     model =  glm::mat4(1.0f);
                     model = glm::translate(model, lampPos);
                     model = glm::scale(model, lampScale);
                     model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
                     pointShadowShaders.setMat4("model", model);
-                    lamp.Draw(pointShadowShaders);
+                    lamp.draw(pointShadowShaders);
 
                     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                }
+                } 
                 
                 for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
                     if (shaderType == PHONG) {
@@ -427,15 +428,13 @@ int main()
                         glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
                     }
                 }
-
-            glCullFace(GL_BACK);
-
             }
+            glCullFace(GL_BACK);
         }
         
-        ///////////////////////////////////
-        // 2. PASS: RENDER SCENE TO QUAD //
-        ///////////////////////////////////
+        ////////////////////////////////////////////
+        // 2. PASS: RENDER OPAQUE OBJECTS TO QUAD //
+        ////////////////////////////////////////////
         glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, quadFBO);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -443,32 +442,6 @@ int main()
         glm::mat4 view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.worldUp);
         glm::mat4 projection = glm::mat4(1.0f);
         projection = glm::perspective(glm::radians(cam.fov), (float) WINDOW_WIDTH / (float) WINDOW_HEIGHT, NEAR_PLANE, FAR_PLANE);
-
-        if (shaderType == PHONG) {
-            phongShaders.use();
-            phongShaders.setMat4("projection", projection);
-            phongShaders.setMat4("view", view);
-            phongShaders.setVec3("viewPos", cam.pos);
-        }
-        else if (shaderType == PBR) {
-            pbrShaders.use();
-            pbrShaders.setMat4("projection", projection);
-            pbrShaders.setMat4("view", view);
-            pbrShaders.setVec3("viewPos", cam.pos);
-        }
-        else if (shaderType == CONSTANT) {
-            constantShaders.use();
-            constantShaders.setMat4("projection", projection);
-            constantShaders.setMat4("view", view);
-        }
-        else if (shaderType == DEPTH) {
-            depthShaders.use();
-            depthShaders.setFloat("near", NEAR_PLANE);
-            depthShaders.setFloat("far", FAR_PLANE);
-            depthShaders.setMat4("projection", projection);
-            depthShaders.setMat4("view", view);
-        }
-
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, scenePos);
         model = glm::scale(model, sceneScale);
@@ -476,59 +449,72 @@ int main()
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
         if (shaderType == PHONG) {
+            phongShaders.use();
+            phongShaders.setMat4("projection", projection);
+            phongShaders.setMat4("view", view);
+            phongShaders.setVec3("viewPos", cam.pos);
             phongShaders.setMat4("model", model);
             phongShaders.setMat3("normalMatrix", normalMatrix);
             phongShaders.setFloat("transparency", 1.0f);
-            scene.Draw(phongShaders);
+            scene.drawOpaque(phongShaders);
         }
         else if (shaderType == PBR) {
+            pbrShaders.use();
+            pbrShaders.setMat4("projection", projection);
+            pbrShaders.setMat4("view", view);
+            pbrShaders.setVec3("viewPos", cam.pos);
             pbrShaders.setMat4("model", model);
             pbrShaders.setMat3("normalMatrix", normalMatrix);
             pbrShaders.setFloat("transparency", 1.0f);
-            scene.Draw(pbrShaders);
+            scene.drawOpaque(pbrShaders);
         }
         else if (shaderType == CONSTANT) {
+            constantShaders.use();
+            constantShaders.setMat4("projection", projection);
+            constantShaders.setMat4("view", view);
             constantShaders.setMat4("model", model);
-            constantShaders.setMat3("normalMatrix", normalMatrix);
-            constantShaders.setFloat("transparency", 1.0f);
-            scene.Draw(constantShaders);
+            scene.drawOpaque(constantShaders);
         }
         else if (shaderType == DEPTH) {
+            depthShaders.use();
+            depthShaders.setFloat("near", NEAR_PLANE);
+            depthShaders.setFloat("far", FAR_PLANE);
+            depthShaders.setMat4("projection", projection);
+            depthShaders.setMat4("view", view);
             depthShaders.setMat4("model", model);
             depthShaders.setMat3("normalMatrix", normalMatrix);
-            scene.Draw(depthShaders);
+            scene.draw(depthShaders);
         }
 
         model = glm::mat4(1.0f);
         model = glm::translate(model, lampPos);
         model = glm::scale(model, lampScale);
         model = glm::rotate(model, glm::radians(ROTATION_SPEED) * (float) glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
-        
         normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+
         if (shaderType == PHONG) {
             phongShaders.setMat4("model", model);
             phongShaders.setMat3("normalMatrix", normalMatrix);
             phongShaders.setFloat("transparency", 1.0f);
-            lamp.Draw(phongShaders);
+            lamp.draw(phongShaders);
         }
         else if (shaderType == PBR) {
             pbrShaders.setMat4("model", model);
             pbrShaders.setMat3("normalMatrix", normalMatrix);
             pbrShaders.setFloat("transparency", 1.0f);
-            lamp.Draw(pbrShaders);
+            lamp.draw(pbrShaders);
         }
         else if (shaderType == CONSTANT) {
             constantShaders.setMat4("model", model);
             constantShaders.setMat3("normalMatrix", normalMatrix);
             constantShaders.setFloat("transparency", 1.0f);
-            lamp.Draw(constantShaders);
+            lamp.draw(constantShaders);
         }
         else if (shaderType == DEPTH) {
             depthShaders.setMat4("model", model);
             depthShaders.setMat3("normalMatrix", normalMatrix);
-            lamp.Draw(depthShaders);
+            lamp.draw(depthShaders);
         }
-
         ////////////////////////////////////////////
 		// RENDER LIGHT SOURCES FOR VISUALIZATION //
         ////////////////////////////////////////////
@@ -627,9 +613,35 @@ int main()
             glDepthFunc(GL_LESS);
     
         }
+        /////////////////////////////////////////
+        // 4. PASS: RENDER TRANSPARENT OBJECTS //
+        /////////////////////////////////////////
+        glDepthMask(GL_FALSE);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, scenePos);
+        model = glm::scale(model, sceneScale);
+        model = glm::rotate(model, sceneRotation, sceneRotationAxis);
+        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+
+        if (shaderType == PHONG) {
+            phongShaders.use();
+            phongShaders.setMat4("model", model);
+            phongShaders.setMat3("normalMatrix", normalMatrix);
+            scene.drawTransparent(phongShaders);
+        }
+        else if (shaderType == PBR) {
+            pbrShaders.use();
+            pbrShaders.setMat4("model", model);
+            pbrShaders.setMat3("normalMatrix", normalMatrix);
+            scene.drawTransparent(pbrShaders);
+        }
+
+        glDepthMask(GL_TRUE);
+
 
         ////////////////////////////////////
-        // 4. PASS: RENDER QUAD TO SCREEN //
+        // 5. PASS: RENDER QUAD TO SCREEN //
         ////////////////////////////////////
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
