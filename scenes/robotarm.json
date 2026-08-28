@@ -2,15 +2,15 @@
   "environment": {
     "exposure": 1.0,
     "globalAmbient": 0.08,
-    "skybox": "assets/skybox/urban_street_04_4k.hdr"
+    "skybox": "assets/skybox/industrial.hdr"
   },
   "entities": [
     {
-      "name": "car",
-      "modelPath": "assets/models/cars/toyota.glb",
+      "name": "robotarm",
+      "modelPath": "assets/models/robotarm/robotarm.glb",
       "position": [1.0, 1.0, 1.0],
       "rotation": [0.0, 50.0, 0.0],
-      "scale": [500.0, 500.0, 500.0]
+      "scale": [5.0, 5.0, 5.0]
     }
   ]
 }

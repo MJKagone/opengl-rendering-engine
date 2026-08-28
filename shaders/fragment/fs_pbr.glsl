@@ -29,8 +29,10 @@ uniform bool hasMetallicTexture;
 uniform bool hasRoughnessTexture;
 uniform bool hasAOTexture;
 uniform bool normalToggle;
+uniform bool iblToggle;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
+uniform samplerCube irradianceMap;
 uniform float shininess;
 uniform float transparency = 1.0f;
 uniform float far_plane;
@@ -103,10 +105,10 @@ float calcPointShadow(vec3 fragPos, vec3 lightPos, vec3 normal, int lightIndex)
     return shadow;
 }
 
-vec3 fresnelSchlick(float cosTheta, vec3 F0)
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
-	return F0 + (1.0f - F0) * pow(clamp(1.0f - cosTheta, 0.0f, 1.0f), 5.0f);
-}
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}   
 
 float distributionGGX(vec3 N, vec3 H, float roughness)
 {
@@ -143,12 +145,12 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 	return ggx1 * ggx2;
 }
 
-vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao, vec3 F0)
+vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
 	vec3 lightDir = normalize(light.position);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 
-	vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0f), F0);
+	vec3 F = fresnelSchlickRoughness(max(dot(halfwayDir, viewDir), 0.0f), F0, roughness);
 	float NDF = distributionGGX(normal, halfwayDir, roughness);
 	float G = geometrySmith(normal, viewDir, lightDir, roughness);
 	vec3 numerator = NDF * G * F;
@@ -165,7 +167,7 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float 
 	return (kD * albedo / 3.14159265359f + specular) * radiance * NdotL;
 }
 
-vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, float ao, vec3 F0, int lightIndex)
+vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0, int lightIndex)
 {
 	vec3 lightDir = normalize(light.position - vFragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
@@ -180,7 +182,7 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, fl
 	}
 
 	vec3 radiance = light.color * attenuation;
-	vec3 F = fresnelSchlick(max(dot(halfwayDir, viewDir), 0.0f), vec3(F0));
+	vec3 F = fresnelSchlickRoughness(max(dot(halfwayDir, viewDir), 0.0f), vec3(F0), roughness);
 	float NDF = distributionGGX(normal, halfwayDir, roughness);
 	float G = geometrySmith(normal, viewDir, lightDir, roughness);
 	vec3 numerator = NDF * G * F;
@@ -213,14 +215,12 @@ void main()
 	}
     vec4 albedoTex = hasDiffuseTexture ? texture(texture_diffuse1, vTexCoords) : vec4(material_diffuseColor, 1.0f);
 	vec3 albedo = albedoTex.rgb;
-	// Only discard if the material was flagged with transparency/alpha testing
+
     float alpha = transparency;
-    if (transparency < 0.99f) {
-        alpha *= albedoTex.a;
-        if (alpha < 0.1f) {
-            discard;
-        }
-    }
+	if (alpha < 0.05f) {
+		discard;
+	}
+
 	vec3 emissionTex = hasEmissionTexture ? texture(texture_emission1, vTexCoords).rgb : vec3(0.0f);
 	// Channel swizzling (disrete vs embedded textures)
     float roughness = 0.9f;
@@ -230,41 +230,45 @@ void main()
     if (hasEmbeddedTextures) {
         // glTF PBR standard: Green = Roughness, Blue = Metallic, Red = AO
         if (hasRoughnessTexture) roughness = texture(texture_roughness1, vTexCoords).g;
-        if (hasMetallicTexture) metallic = texture(texture_metallic1, vTexCoords).b;
-        if (hasAOTexture) ao = texture(texture_ao1, vTexCoords).r;
+		if (hasMetallicTexture) metallic = texture(texture_metallic1, vTexCoords).b;
+        if (hasAOTexture) {
+			float rawAO = texture(texture_ao1, vTexCoords).r;
+			ao = (rawAO < 0.01f) ? 1.0f : rawAO; 
+		}
     } else {
         // Standard discrete textures: scalar values in Red channel
         if (hasRoughnessTexture) roughness = texture(texture_roughness1, vTexCoords).r;
-        if (hasMetallicTexture) metallic = texture(texture_metallic1, vTexCoords).r;
-        if (hasAOTexture) ao = texture(texture_ao1, vTexCoords).r;
+		if (hasMetallicTexture) metallic = texture(texture_metallic1, vTexCoords).r;
+		if (hasAOTexture) {
+			float rawAO = texture(texture_ao1, vTexCoords).r;
+			ao = (rawAO < 0.01f) ? 1.0f : rawAO; 
+		}
     }
 
 	vec3 F0 = vec3(0.04f); // Default reflectance for dielectrics
-	if (hasMetallicTexture || hasEmbeddedTextures) {
-		metallic = texture(texture_metallic1, vTexCoords).b;
-		if (hasSpecularTexture) {
-			// Both metallic and specular maps: use metallic workflow with specular factor
-			float specFactor = texture(texture_specular1, vTexCoords).r;
-			F0 = mix(vec3(0.08f * specFactor), albedo, metallic);
-		// Only metallic map: basic metallic workflow
-		} else {
-			F0 = mix(vec3(0.04f), albedo, metallic);
-		}
-	} else if (hasSpecularTexture) {
-		// Only specular map: treat as conductor
-		vec3 specColor = texture(texture_specular1, vTexCoords).rgb;
-		F0 = specColor;
-		// If specular highlight is colored/bright, treat as conductor; otherwise treat as dielectric
-		metallic = (max(specColor.r, max(specColor.g, specColor.b)) > 0.1f) ? 1.0f : 0.0f;
-	}
+    
+    // Specular vs Metallic workflow for F0
+    if (hasSpecularTexture && !hasMetallicTexture && !hasEmbeddedTextures) {
+        vec3 specColor = texture(texture_specular1, vTexCoords).rgb;
+        F0 = specColor;
+        metallic = (max(specColor.r, max(specColor.g, specColor.b)) > 0.1f) ? 1.0f : 0.0f;
+    } else {
+        // Metallic workflow (using the safely extracted metallic value from above)
+        if (hasSpecularTexture) {
+            float specFactor = texture(texture_specular1, vTexCoords).r;
+            F0 = mix(vec3(0.08f * specFactor), albedo, metallic);
+        } else {
+            F0 = mix(vec3(0.04f), albedo, metallic);
+        }
+    }
 
 	// Lighting calculations
 	vec3 Lo = vec3(0.0f);
-	Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, ao, F0);
+	Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, F0);
 	// vec3 result = vec3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < numPointLights; i++)
 	{
-		Lo += calcPointLight(pointLights[i], normal, viewDir, albedo, metallic, roughness, ao, F0, i);
+		Lo += calcPointLight(pointLights[i], normal, viewDir, albedo, metallic, roughness, F0, i);
 	}
 	// Output
     if (hasEmissionTexture) {
@@ -272,7 +276,17 @@ void main()
     }
 
 	// Ambient
-	Lo += globalAmbient * ao * albedo;
+	if (iblToggle) {
+		vec3 kS = fresnelSchlickRoughness(max(dot(normal, viewDir), 0.0), F0, roughness); 
+		vec3 kD = 1.0 - kS;
+		kD *= 1.0 - metallic;
+		vec3 irradiance = texture(irradianceMap, normal).rgb;
+		vec3 ambient = kD * albedo * irradiance * ao; 
+		Lo += ambient;
+	} else {
+		vec3 ambient = globalAmbient * albedo * ao;
+		Lo += ambient;
+	}
 
     FragColor = vec4(Lo, alpha);	
 }

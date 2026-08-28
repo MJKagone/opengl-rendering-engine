@@ -1,6 +1,7 @@
 {
   "environment": {
     "skybox": "assets/skybox/space_8x.png",
+    "skyboxRotation": [0.0, 25.0, 0.0],
     "exposure": 1.0,
     "globalAmbient": 0.08
   },

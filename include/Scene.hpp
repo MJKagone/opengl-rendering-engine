@@ -46,9 +46,9 @@ struct PointLightData {
 };
 
 struct DirLightData {
-    glm::vec3 position;
-    glm::vec3 color;
-    float intensity;
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 color = glm::vec3(0.0f);
+    float intensity = 0.0f;
 };
 
 class Scene {
@@ -60,6 +60,7 @@ public:
     float globalAmbient = 0.08f;
     float exposure = 1.0f;
     std::vector<std::string> skyboxPath;
+    glm::vec3 skyboxRotation = glm::vec3(0.0f);
 
     std::unordered_map<std::string, Model*> modelCache;
 
@@ -84,6 +85,7 @@ public:
             }
             exposure = data["environment"].value("exposure", 1.0f);
             globalAmbient = data["environment"].value("globalAmbient", 0.08f);
+            skyboxRotation = parseVec3(data["environment"].value("skyboxRotation", std::vector<float>{0.0f, 0.0f, 0.0f}));
         }
 
         if (data.contains("pointLights")) {

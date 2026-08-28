@@ -1,0 +1,32 @@
+{
+  "environment": {
+    "exposure": 1.0,
+    "globalAmbient": 0.08
+  },
+  "directionalLight": {
+    "position": [60.0, 20.0, 0.0],
+    "color": [255.0, 230.0, 200.0],
+    "intensity": 10.0
+  },
+    "pointLights": [
+    {
+      "position": [8.7, 4.8, 8.3],
+      "color": [255.0, 240.0, 220.0],
+      "intensity": 1000.0
+    },
+    {
+      "position": [-4.7, 5.3, -8.5],
+      "color": [255.0, 255.0, 255.0],
+      "intensity": 1000.0
+    }
+  ],
+  "entities": [
+    {
+      "name": "castle-room",
+      "modelPath": "assets/models/castle-room/Castle_Room.glb",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, -4.0, 5.0],
+      "scale": [1.0, 1.0, 1.0]
+    }
+  ]
+}

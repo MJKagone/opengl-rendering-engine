@@ -285,8 +285,10 @@ private:
             {
                 if(std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0)
                 {
-                    textures.push_back(textures_loaded[j]);
-                    skip = true; // a texture with the same filepath has already been loaded, continue to next one. (optimization)
+                    Texture cachedTexture = textures_loaded[j];
+                    cachedTexture.type = typeName; 
+                    textures.push_back(cachedTexture);
+                    skip = true; 
                     break;
                 }
             }
@@ -448,6 +450,10 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
         }
 
         glBindTexture(GL_TEXTURE_2D, textureID);
+        if (nrComponents == 1) {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+        }
         
         // Tell OpenGL to expect 1-byte aligned data tightly packed by stbi_load
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -518,6 +524,10 @@ GLuint TextureFromEmbedded(const aiTexture *embeddedTex, bool gamma)
     }
 
     glBindTexture(GL_TEXTURE_2D, textureID);
+    if (nrComponents == 1) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+    }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
