@@ -64,7 +64,7 @@ float fpsTimer = 0.0f;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-glm::vec3 initialCamPos = glm::vec3(-38.0f, 15.0f, 30.0f);
+glm::vec3 initialCamPos = glm::vec3(-5.0f, 10.0f, 30.0f);
 
 Camera cam = Camera(initialCamPos);
 
@@ -147,7 +147,7 @@ int main()
     
     // Load models and scene parameters from JSON
     Scene scene;
-    if (!scene.loadFromJSON("scenes/bedroom.json")) {
+    if (!scene.loadFromJSON("scenes/boat.json")) {
         std::cerr << "Failed to load scene from JSON." << std::endl;
         return -1;
     }
@@ -1103,6 +1103,16 @@ void generateSkybox(GLuint& cubeVBO, GLuint& cubeVAO, GLuint &equirectangularMap
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+
+    // ADD THIS: Generate mipmaps for the captured skybox
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxCubemap);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    // Overwrite the previous GL_LINEAR filter to enable trilinear LOD sampling
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 }
 
 void generateShadowMap(GLuint& shadowMapFBO, GLuint& shadowMap)

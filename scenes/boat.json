@@ -8,9 +8,9 @@
   "entities": [
     {
       "name": "boat",
-      "modelPath": "assets/models/boats/source/dutch_ship_medium.glb",
+      "modelPath": "assets/models/boats/bigboat.glb",
       "position": [0.0, 0.0, 0.0],
-      "rotation": [0.0, 0.0, 0.0],
+      "rotation": [0.0, -30.0, 0.0],
       "scale": [1.5, 1.5, 1.5]
     }
   ]

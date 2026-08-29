@@ -46,6 +46,8 @@ public:
     glm::vec3 diffuseColor;
     float shininess;
     float opacity;
+    float roughnessFactor;
+    float metallicFactor;
     bool isTransparent;
     bool hasDiffuseTexture;
     bool hasSpecularTexture;
@@ -57,7 +59,7 @@ public:
     bool hasEmbeddedTextures;
 
     // constructor
-    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, bool hasEmbeddedTextures = false, float shininess = 32.0f, float opacity = 1.0f, bool isTransparent = false)
+    Mesh(vector<Vertex> vertices, vector<GLuint> indices, vector<Texture> textures, glm::vec3 diffuseColor = glm::vec3(1.0f), bool hasDiffuseTexture = false, bool hasSpecularTexture = false, bool hasNormalTexture = false, bool hasMetallicTexture = false, bool hasRoughnessTexture = false, bool hasAOTexture = false, bool hasEmissionTexture = false, bool hasEmbeddedTextures = false, float shininess = 32.0f, float opacity = 1.0f, bool isTransparent = false, float roughnessFactor = 0.9f, float metallicFactor = 0.0f)
     {
         this->vertices = vertices;
         this->indices = indices;
@@ -74,6 +76,8 @@ public:
         this->opacity = opacity;
         this->isTransparent = isTransparent;
         this->hasEmbeddedTextures = hasEmbeddedTextures;
+        this->roughnessFactor = roughnessFactor;
+        this->metallicFactor = metallicFactor;
 
         // now that we have all the required data, set the vertex buffers and its attribute pointers.
         setupMesh();
@@ -133,6 +137,8 @@ public:
         shader.setVec3("material_diffuseColor", diffuseColor);
         shader.setFloat("shininess", this->shininess);
         shader.setFloat("transparency", this->opacity);
+        shader.setFloat("material_roughness", this->roughnessFactor);
+        shader.setFloat("material_metallic", this->metallicFactor);
         // draw mesh
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);

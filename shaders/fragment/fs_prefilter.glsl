@@ -56,7 +56,26 @@ void main() {
 
         float NdotL = max(dot(N, L), 0.0);
         if(NdotL > 0.0) {
-            prefilteredColor += texture(environmentMap, L).rgb * NdotL;
+            float NdotH = max(dot(N, H), 0.0);
+            float HdotV = max(dot(H, V), 0.0);
+            
+            // True GGX Normal Distribution Function (NDF)
+            float a = roughness * roughness;
+            float a2 = a * a;
+            float denom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
+            float D = a2 / (PI * denom * denom);
+            
+            // Calculate accurate PDF and solid angle for mip level selection
+            float pdf = (D * NdotH) / (4.0 * HdotV) + 0.0001;
+            
+            float resolution = 2048.0; // Match your SKYBOX_WIDTH
+            float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
+            float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+            
+            float mipLevel = roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
+            
+            // Sample the calculated LOD
+            prefilteredColor += textureLod(environmentMap, L, mipLevel).rgb * NdotL;
             totalWeight      += NdotL;
         }
     }
