@@ -134,18 +134,20 @@ int main()
 	Shader lightSourceShaders("shaders/vertex/vs_lightSource.glsl", "shaders/fragment/fs_lightSource.glsl");
     Shader er2cubemapShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_er2cubemap.glsl");
     Shader skyboxShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_skybox.glsl");
-    Shader irradianceShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_irradiance.glsl");
     Shader dirShadowShaders("shaders/vertex/vs_dirShadows.glsl", "shaders/fragment/fs_dirShadows.glsl");
     Shader pointShadowShaders("shaders/vertex/vs_pointShadows.glsl", "shaders/fragment/fs_pointShadows.glsl", "shaders/geometry/gs_pointShadows.glsl");
     Shader debugShaders("shaders/vertex/vs_debug.glsl", "shaders/fragment/fs_debug.glsl");
     Shader depthShaders("shaders/vertex/vs.glsl", "shaders/fragment/fs_depth.glsl");
     Shader quadShaders("shaders/vertex/vs_quad.glsl", "shaders/fragment/fs_quad.glsl");
+    Shader irradianceShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_irradiance.glsl");
+    Shader prefilterShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_prefilter.glsl");
+    Shader brdfShaders("shaders/vertex/vs_quad.glsl", "shaders/fragment/fs_brdf.glsl");
     
     // stbi_set_flip_vertically_on_load(true);
     
     // Load models and scene parameters from JSON
     Scene scene;
-    if (!scene.loadFromJSON("scenes/torii.json")) {
+    if (!scene.loadFromJSON("scenes/bedroom.json")) {
         std::cerr << "Failed to load scene from JSON." << std::endl;
         return -1;
     }
@@ -236,6 +238,74 @@ int main()
     // Final render target: screen-filling HDR quad
     GLuint quadFBO, quadVBO, quadVAO, quadTexture;
     generateQuad(quadFBO, quadVBO, quadVAO, quadTexture);
+
+    // --- 1. PREFILTER MAP GENERATION ---
+    GLuint prefilterMap;
+    glGenTextures(1, &prefilterMap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+    for (unsigned int i = 0; i < 6; ++i) {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, 128, 128, 0, GL_RGB, GL_FLOAT, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+    GLuint iblFBO;
+    glGenFramebuffers(1, &iblFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, iblFBO);
+
+    prefilterShaders.use();
+    prefilterShaders.setInt("environmentMap", 0);
+    prefilterShaders.setMat4("projection", captureProjection);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxCubemap);
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    unsigned int maxMipLevels = 5;
+    for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
+    {
+        unsigned int mipWidth  = 128 * std::pow(0.5, mip);
+        unsigned int mipHeight = 128 * std::pow(0.5, mip);
+        glViewport(0, 0, mipWidth, mipHeight);
+
+        float prefilterRoughness = (float)mip / (float)(maxMipLevels - 1);
+        prefilterShaders.setFloat("roughness", prefilterRoughness);
+        for (unsigned int i = 0; i < 6; ++i)
+        {
+            prefilterShaders.setMat4("view", captureViews[i]);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilterMap, mip);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glBindVertexArray(cubeVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+    }
+
+    // --- 2. BRDF LUT GENERATION ---
+    GLuint brdfLUTTexture;
+    glGenTextures(1, &brdfLUTTexture);
+    glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, iblFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
+    glViewport(0, 0, 512, 512);
+    brdfShaders.use();
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
     
     // Directional light shadow map FBO and texture
     GLuint shadowMapFBO, shadowMap;
@@ -314,6 +384,14 @@ int main()
             pbrShaders.setInt("irradianceMap", 20);
             glActiveTexture(GL_TEXTURE20);
             glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+            
+            pbrShaders.setInt("prefilterMap", 21);
+            glActiveTexture(GL_TEXTURE21);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+            
+            pbrShaders.setInt("brdfLUT", 22);
+            glActiveTexture(GL_TEXTURE22);
+            glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
         }
         
         // Clear background

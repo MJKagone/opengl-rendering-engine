@@ -33,6 +33,8 @@ uniform bool iblToggle;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
 uniform float shininess;
 uniform float transparency = 1.0f;
 uniform float far_plane;
@@ -280,8 +282,19 @@ void main()
 		vec3 kS = fresnelSchlickRoughness(max(dot(normal, viewDir), 0.0), F0, roughness); 
 		vec3 kD = 1.0 - kS;
 		kD *= 1.0 - metallic;
+
+		// Diffuse IBL
 		vec3 irradiance = texture(irradianceMap, normal).rgb;
-		vec3 ambient = kD * albedo * irradiance * ao; 
+		vec3 diffuse = irradiance * albedo;
+
+		// Specular IBL
+		const float MAX_REFLECTION_LOD = 4.0;
+		vec3 R = reflect(-viewDir, normal);
+		vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+		vec2 envBRDF = texture(brdfLUT, vec2(max(dot(normal, viewDir), 0.0), roughness)).rg;
+		vec3 specular = prefilteredColor * (F0 * envBRDF.x + envBRDF.y);
+
+		vec3 ambient = (kD * diffuse + specular) * ao; 
 		Lo += ambient;
 	} else {
 		vec3 ambient = globalAmbient * albedo * ao;

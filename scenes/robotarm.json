@@ -9,7 +9,7 @@
       "name": "robotarm",
       "modelPath": "assets/models/robotarm/robotarm.glb",
       "position": [1.0, 1.0, 1.0],
-      "rotation": [0.0, 50.0, 0.0],
+      "rotation": [0.0, -20.0, 0.0],
       "scale": [5.0, 5.0, 5.0]
     }
   ]
