@@ -2,7 +2,7 @@
   "environment": {
     "exposure": 1.0,
     "globalAmbient": 0.08,
-    "skybox": "assets/skybox/urban_street_04_4k.hdr"
+    "skybox": "assets/skybox/urban.hdr"
   },
   "entities": [
     {

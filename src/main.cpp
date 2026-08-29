@@ -147,7 +147,7 @@ int main()
     
     // Load models and scene parameters from JSON
     Scene scene;
-    if (!scene.loadFromJSON("scenes/boat.json")) {
+    if (!scene.loadFromJSON("scenes/car.json")) {
         std::cerr << "Failed to load scene from JSON." << std::endl;
         return -1;
     }
