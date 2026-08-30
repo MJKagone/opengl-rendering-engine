@@ -30,6 +30,7 @@ uniform bool hasRoughnessTexture;
 uniform bool hasAOTexture;
 uniform bool normalToggle;
 uniform bool iblToggle;
+uniform bool lightToggle;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform samplerCube irradianceMap;
@@ -270,7 +271,9 @@ void main()
 
 	// Lighting calculations
 	vec3 Lo = vec3(0.0f);
-	Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, F0);
+	if (lightToggle) {
+		Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, F0);
+	}
 	// vec3 result = vec3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < numPointLights; i++)
 	{
