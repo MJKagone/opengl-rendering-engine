@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
         std::cerr << program;
         return 1;
     }
-    std::string scene_path = "scenes/" + program.get<std::string>("input_scene");
+    std::string scene_path = "scenes/" + program.get<std::string>("input_scene") + ".json";
 
     // Initialize GLFW
     glfwInit();
