@@ -21,7 +21,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void processInput(GLFWwindow* window);
 void generateCube(GLuint &VAO, GLuint &VBO);
 void generateQuad(GLuint &FBO, GLuint &VBO, GLuint &VAO, GLuint &texture, GLuint &rboDepth);
-void generateLine(GLuint &VBO, GLuint &VAO);
+void generateLine(GLuint &VBO, GLuint &VAO, int lineCount = 1);
 void generateSkybox(GLuint &VAO, GLuint &VBO, GLuint &equirectangularMap, GLuint &cubemap, GLuint &captureFBO, Shader &er2cubemapShader, Scene &scene);
 void generateShadowMap(GLuint &FBO, GLuint &texture);
 void generateShadowCubemap(GLuint &shadowCubemapFBO, GLuint &shadowCubemap);
@@ -66,6 +66,7 @@ const float ROTATION_SPEED = 275.0f;
 const float globalAmbient = 0.08f;
 const float globalLightScale = 1.0f;
 const float orthoScale = 2.0f;
+const float POINT_LIGHT_LINE_SCALE = 5.0f;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
@@ -249,9 +250,9 @@ int main(int argc, char* argv[]) {
             skyboxMatrixNames[i] = "skyboxTransforms[" + std::to_string(i) + "]";
         }
 
-        // Debug line for directional light
+        // Debug line for directional light + point light rays (14 per light: 6 faces, 8 corners)
         GLuint lineVBO, lineVAO;
-        generateLine(lineVBO, lineVAO);
+        generateLine(lineVBO, lineVAO, NUM_POINT_LIGHTS * 14 + 1);
 
         // Final render target: screen-filling HDR quad
         GLuint quadFBO, quadVBO, quadVAO, quadTexture, quadRboDepth;
@@ -628,6 +629,41 @@ int main(int argc, char* argv[]) {
                 lightSourceShaders.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 0.0f));
 
                 glDrawArrays(GL_LINES, 0, 2);
+
+                // Point light rays: 14 per light (6 face normals, 8 corners)
+                if (NUM_POINT_LIGHTS > 0) {
+                    float lineLength = POINT_LIGHT_LINE_SCALE * pointLightCubeScale.x;
+                    std::vector<float> rayVertices;
+                    rayVertices.reserve(scene.pointLights.size() * 14 * 6);
+
+                    for (const auto& light : scene.pointLights) {
+                        for (int j = 0; j < 14; j++) {
+                            glm::vec3 dir;
+                            if (j < 6) {
+                                dir = glm::vec3(0.0f);
+                                dir[j % 3] = (j < 3) ? 1.0f : -1.0f;
+                            } else {
+                                int k = j - 6;
+                                dir = glm::normalize(glm::vec3(
+                                    (k & 1) ? 1.0f : -1.0f,
+                                    (k & 2) ? 1.0f : -1.0f,
+                                    (k & 4) ? 1.0f : -1.0f));
+                            }
+                            glm::vec3 end = light.position + dir * lineLength;
+                            rayVertices.push_back(light.position.x);
+                            rayVertices.push_back(light.position.y);
+                            rayVertices.push_back(light.position.z);
+                            rayVertices.push_back(end.x);
+                            rayVertices.push_back(end.y);
+                            rayVertices.push_back(end.z);
+                        }
+                    }
+
+                    glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+                    glBufferSubData(GL_ARRAY_BUFFER, 0, rayVertices.size() * sizeof(float), rayVertices.data());
+                    glDrawArrays(GL_LINES, 0, NUM_POINT_LIGHTS * 28);
+                }
+
                 glBindVertexArray(0);
             }
 
@@ -974,13 +1010,13 @@ void generateQuad(GLuint& quadFBO, GLuint& quadVBO, GLuint& quadVAO, GLuint& qua
     glEnableVertexAttribArray(1);    
 }
 
-void generateLine(GLuint& lineVBO, GLuint& lineVAO)
+void generateLine(GLuint& lineVBO, GLuint& lineVAO, int lineCount)
 {
     glGenBuffers(1, &lineVBO);
     glGenVertexArrays(1, &lineVAO);
     glBindVertexArray(lineVAO);
     glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), NULL, GL_DYNAMIC_DRAW); 
+    glBufferData(GL_ARRAY_BUFFER, lineCount * 6 * sizeof(float), NULL, GL_DYNAMIC_DRAW); 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
