@@ -1,5 +1,5 @@
 # Define the path to your header files
-HEADERS = include/Camera.hpp include/Mesh.hpp include/Model.hpp include/Shader.hpp
+HEADERS = include/Camera.hpp include/Mesh.hpp include/Model.hpp include/Shader.hpp include/Scene.hpp
 
 # Default target placed at the top so 'make' runs it automatically
 all: build/main

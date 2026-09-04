@@ -1,6 +1,7 @@
 #include <iostream>
 #include <math.h>
 #include <ctime>
+#include <vector>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -40,6 +41,7 @@ bool debugToggle = false;
 bool normalToggle = true;
 bool lightToggle = true;
 bool iblToggle = true;
+bool specularIBLOnlyMirror = false;
 bool environmentChanged = false;
 
 const int WINDOW_WIDTH = 1280;
@@ -54,6 +56,7 @@ const int IRRADIANCE_WIDTH = 32;
 const int IRRADIANCE_HEIGHT = 32;
 const int PREFILTER_WIDTH = 256;
 const int PREFILTER_HEIGHT = 256;
+constexpr int MAX_POINT_LIGHTS = 10;
 
 int frameCount = 0;
 
@@ -200,7 +203,13 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    const int NUM_POINT_LIGHTS = scene.pointLights.size();
+    if (scene.pointLights.size() > static_cast<size_t>(MAX_POINT_LIGHTS)) {
+        std::cerr << "Scene has " << scene.pointLights.size() << " point lights; only "
+                  << MAX_POINT_LIGHTS << " are supported." << std::endl;
+        return -1;
+    }
+
+    const int NUM_POINT_LIGHTS = static_cast<int>(scene.pointLights.size());
     
     // Light cube vertices
     GLuint cubeVBO, cubeVAO;
@@ -229,7 +238,7 @@ int main(int argc, char* argv[]) {
         shadowMatrixNames[j] = "shadowMatrices[" + std::to_string(j) + "]";
     }
 
-    std::string shadowCubemapNames[NUM_POINT_LIGHTS];
+    std::vector<std::string> shadowCubemapNames(NUM_POINT_LIGHTS);
     for (int i = 0; i < NUM_POINT_LIGHTS; ++i) {
         shadowCubemapNames[i] = "shadowCubemaps[" + std::to_string(i) + "]";
     }
@@ -262,8 +271,8 @@ int main(int argc, char* argv[]) {
     generateShadowMap(shadowMapFBO, shadowMap);
     
     // Point light shadow cubemap FBOs and textures
-    GLuint shadowCubemapFBO[NUM_POINT_LIGHTS];
-    GLuint shadowCubemap[NUM_POINT_LIGHTS];
+    std::vector<GLuint> shadowCubemapFBO(NUM_POINT_LIGHTS);
+    std::vector<GLuint> shadowCubemap(NUM_POINT_LIGHTS);
     
     for (int i = 0; i < NUM_POINT_LIGHTS; ++i)
     {
@@ -294,6 +303,7 @@ int main(int argc, char* argv[]) {
     pbrShaders.setInt("numPointLights", NUM_POINT_LIGHTS); 
     pbrShaders.setFloat("far_plane", 25.0f);
     pbrShaders.setFloat("globalAmbient", globalAmbient);
+    specularIBLOnlyMirror = scene.specularIBLOnlyMirror;
 
     for (int i = 0; i < 10; i++) { 
         pbrShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
@@ -343,6 +353,7 @@ int main(int argc, char* argv[]) {
         pbrShaders.setBool("normalToggle", normalToggle);
         pbrShaders.setBool("lightToggle", lightToggle);
         pbrShaders.setInt("numPointLights", lightToggle ? NUM_POINT_LIGHTS : 0);
+        pbrShaders.setBool("specularIBLOnlyMirror", specularIBLOnlyMirror);
         if (environmentChanged) {
             std::string newSkyboxPath = getSkyboxPath(static_cast<Environment>(environment));
             if (!newSkyboxPath.empty()) {
@@ -789,6 +800,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     {
         if (debugToggle == false) {debugToggle = true;} else {debugToggle = false;}
     }
+    if (key == GLFW_KEY_M && action == GLFW_PRESS)
+    {
+        if (specularIBLOnlyMirror == false) {specularIBLOnlyMirror = true;} else {specularIBLOnlyMirror = false;}
+    }
     if (key == GLFW_KEY_1 && action == GLFW_PRESS)
     {
         environment = 0;
@@ -1159,6 +1174,8 @@ void generatePrefilterMap(GLuint &prefilterMap, GLuint &iblFBO, Shader &prefilte
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    unsigned int maxMipLevels = 5;
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAX_LEVEL, maxMipLevels - 1);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
     glBindFramebuffer(GL_FRAMEBUFFER, iblFBO);
@@ -1183,7 +1200,6 @@ void generatePrefilterMap(GLuint &prefilterMap, GLuint &iblFBO, Shader &prefilte
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
-    unsigned int maxMipLevels = 5;
     for (unsigned int mip = 0; mip < maxMipLevels; ++mip)
     {
         unsigned int mipWidth  = PREFILTER_WIDTH * std::pow(0.5, mip);

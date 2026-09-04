@@ -4,19 +4,24 @@
 
 A WIP 3D rendering engine built to learn graphics programming with the help of the [LearnOpenGL](https://learnopengl.com/) tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
 
+Note: none of the assets or third-party libraries are included in this repository.
+
 ## Features
 
-- [x] **Model loading**: Imports complex 3D models and scenes (FBX, OBJ, etc.) along with their textures using Assimp
+- [x] **Model loading**:
+  * Imports complex 3D models and scenes (FBX, OBJ, GLB, etc.) along with their textures using Assimp
+  * Scenes can be configured as JSON files located in the `scenes/` folder
 - [x] **Lighting**:
   * Directional light
-  * Multiple point lights with configurable attenuation
+  * Point lights with physical attenuation
+  * Image-based lighting (IBL) with HDR environment maps
   * Cook-Torrance PBR shading model
   * Blinn-Phong shading model
   * Constant shading model
   * Depth-only shader
 - [x] **Shadow mapping**:
-  * Calculates directional light shadows using 2D depth maps
-  * Calculates omnidirectional point light shadows using depth cubemaps and geometry shaders
+  * Directional light shadows using 2D depth maps
+  * Omnidirectional point light shadows using depth cubemaps and geometry shaders
   * Percentage-Closer Filtering (PCF) for softer shadow edges
 - [x] **Skybox**: Equirectangular skybox with seamless cubemap sampling
 - [x] **Camera system**: Interactive 3D fly-camera with zoom
@@ -25,7 +30,6 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 
 ## Future Plans
 - [ ] **Bloom**: Add bloom post-processing effects for light sources
-- [ ] **Saving/loading scenes**: Implement a scene graph and serialization system to save and load complex scenes
 - [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
 
 ## Controls
@@ -35,16 +39,17 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 | **Mouse move** | Look around (yaw/pitch) |
 | **Mouse scroll**| Zoom (adjust field of view) |
 | **WASDEQ** | Forward/left/backward/right/up/down |
-| **B** | Toggle skybox rendering |
 | **F** | Toggle FPS counter |
-| **L** | Toggle point lights on/off |
+| **L** | Toggle directional & point lights |
+| **I** | Toggle IBL |
 | **N** | Toggle normal mapping |
-| **V** | Toggle V-Sync (FPS cap) |
+| **V** | Toggle V-Sync |
 | **.** | Toggle debug mode (currently: show light sources as cubes) |
 | **Space** | Print current camera position to standard output |
 | **Left/Right** | Switch between shaders (currently: PBR/Phong/constant/depth) |
 | **Up/down** | Increase/decrease camera exposure (HDR) |
 | **Escape** | Close the application | 
+| **NUMPAD 1-9** | Switch between environment maps |
 
 ## Dependencies
 
@@ -54,6 +59,8 @@ A WIP 3D rendering engine built to learn graphics programming with the help of t
 * **GLM**: OpenGL Mathematics library for vector and matrix operations
 * **Assimp**: Open Asset Import Library for loading 3D models
 * **stb_image**: Image loading for textures
+* **argparse**: Command-line argument parsing library
+* **nlohmann/json**: JSON parsing library for scene configuration
 
 For building, the following should be retrieved and added to the project:
 ```
@@ -62,6 +69,8 @@ include/
 │   ├── glad/
 │   ├── glm/
 │   ├── KHR/
+│   ├── argparse/
+│   ├── json/
 │   ├── stb_image.h
 utils/
 ├── glad.c

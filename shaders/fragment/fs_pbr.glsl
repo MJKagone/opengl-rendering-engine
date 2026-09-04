@@ -36,6 +36,7 @@ uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
+uniform bool specularIBLOnlyMirror;
 uniform float shininess;
 uniform float transparency = 1.0f;
 uniform float far_plane;
@@ -300,6 +301,9 @@ void main()
 		vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
 		vec2 envBRDF = texture(brdfLUT, vec2(max(dot(normal, viewDir), 0.0), roughness)).rg;
 		vec3 specular = prefilteredColor * (F0 * envBRDF.x + envBRDF.y);
+        if (specularIBLOnlyMirror && !(roughness < 0.01 && metallic > 0.99)) {
+            specular = vec3(0.0);
+        }
 
 		vec3 ambient = (kD * diffuse + specular) * ao; 
 		Lo += ambient;
