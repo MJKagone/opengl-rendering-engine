@@ -1,6 +1,6 @@
 # OpenGL Rendering Engine
 
-[OpenGLScene.webm](https://github.com/user-attachments/assets/ad682867-f6ab-464b-afb4-fddeb1e27db4)
+[OpenGLScene.webm](https://github.com/user-attachments/assets/8fe7885a-1794-47cd-bbfa-e837afb96715)
 
 A WIP 3D rendering engine built to learn graphics programming with the help of the [LearnOpenGL](https://learnopengl.com/) tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
 
