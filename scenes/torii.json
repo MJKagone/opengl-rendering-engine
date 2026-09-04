@@ -2,7 +2,7 @@
   "environment": {
     "exposure": 1.0,
     "globalAmbient": 0.08,
-    "skybox": "assets/skybox/garden.hdr",
+    "skybox": "assets/skybox/lakeside.hdr",
     "skyboxRotation": [0.0, 45.0, 0.0]
   },
 

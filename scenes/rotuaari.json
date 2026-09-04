@@ -7,10 +7,10 @@
   "entities": [
     {
       "name": "car",
-      "modelPath": "assets/models/cars/toyota.glb",
+      "modelPath": "assets/models/rotuaari/rotuaari.glb",
       "position": [1.0, 1.0, 1.0],
-      "rotation": [0.0, 50.0, 0.0],
-      "scale": [500.0, 500.0, 500.0]
+      "rotation": [0.0, 1.0, 0.0],
+      "scale": [0.5, 0.5, 0.5]
     }
   ]
 }

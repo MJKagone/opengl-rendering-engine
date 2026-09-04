@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <memory>
 #include <fstream>
 #include <iostream>
 #include <glm/glm.hpp>
@@ -61,8 +62,9 @@ public:
     float exposure = 1.0f;
     std::vector<std::string> skyboxPath;
     glm::vec3 skyboxRotation = glm::vec3(0.0f);
+    bool specularIBLOnlyMirror = false;
 
-    std::unordered_map<std::string, Model*> modelCache;
+    std::unordered_map<std::string, std::unique_ptr<Model>> modelCache;
 
     bool loadFromJSON(const std::string& filepath) {
         std::ifstream file(filepath);
@@ -86,6 +88,7 @@ public:
             exposure = data["environment"].value("exposure", 1.0f);
             globalAmbient = data["environment"].value("globalAmbient", 0.08f);
             skyboxRotation = parseVec3(data["environment"].value("skyboxRotation", std::vector<float>{0.0f, 0.0f, 0.0f}));
+            specularIBLOnlyMirror = data["environment"].value("specularIBLOnlyMirror", false);
         }
 
         if (data.contains("pointLights")) {
@@ -125,9 +128,9 @@ public:
                 std::string modelPath = entityNode["modelPath"];
                 if (modelCache.find(modelPath) == modelCache.end()) {
                     std::cout << "Loading model: " << modelPath << std::endl;
-                    modelCache[modelPath] = new Model(modelPath);
+                    modelCache[modelPath] = std::make_unique<Model>(modelPath);
                 }
-                entity.model = modelCache[modelPath];
+                entity.model = modelCache[modelPath].get();
 
                 entities.push_back(entity);
             }
@@ -140,14 +143,5 @@ public:
         for (auto& entity : entities) {
             entity.transform.rotation += entity.transform.rotationVelocity * deltaTime;
         }
-    }
-
-    void cleanUp() {
-        for (auto& pair : modelCache) {
-            delete pair.second;
-        }
-        modelCache.clear();
-        entities.clear();
-        pointLights.clear();
     }
 };

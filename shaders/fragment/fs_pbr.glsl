@@ -30,12 +30,18 @@ uniform bool hasRoughnessTexture;
 uniform bool hasAOTexture;
 uniform bool normalToggle;
 uniform bool iblToggle;
+uniform bool lightToggle;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
+uniform bool specularIBLOnlyMirror;
 uniform float shininess;
 uniform float transparency = 1.0f;
 uniform float far_plane;
+uniform float material_roughness;
+uniform float material_metallic;
 
 const vec3 sampleOffsetDirections[20] = vec3[]
 (
@@ -147,6 +153,7 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 
 vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0)
 {
+	if (length(light.position) < 0.0001f) return vec3(0.0f);
 	vec3 lightDir = normalize(light.position);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 
@@ -169,6 +176,7 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 albedo, float 
 
 vec3 calcPointLight(PointLight light, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0, int lightIndex)
 {
+	if (length(light.position) < 0.0001f) return vec3(0.0f);
 	vec3 lightDir = normalize(light.position - vFragPos);
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 	float distance = length(light.position - vFragPos);
@@ -222,9 +230,9 @@ void main()
 	}
 
 	vec3 emissionTex = hasEmissionTexture ? texture(texture_emission1, vTexCoords).rgb : vec3(0.0f);
-	// Channel swizzling (disrete vs embedded textures)
-    float roughness = 0.9f;
-    float metallic = 0.0f;
+
+    float roughness = material_roughness;
+    float metallic = material_metallic;
     float ao = 1.0f;
 
     if (hasEmbeddedTextures) {
@@ -264,7 +272,9 @@ void main()
 
 	// Lighting calculations
 	vec3 Lo = vec3(0.0f);
-	Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, F0);
+	if (lightToggle) {
+		Lo += calcDirLight(dirLight, normal, viewDir, albedo, metallic, roughness, F0);
+	}
 	// vec3 result = vec3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < numPointLights; i++)
 	{
@@ -280,8 +290,22 @@ void main()
 		vec3 kS = fresnelSchlickRoughness(max(dot(normal, viewDir), 0.0), F0, roughness); 
 		vec3 kD = 1.0 - kS;
 		kD *= 1.0 - metallic;
+
+		// Diffuse IBL
 		vec3 irradiance = texture(irradianceMap, normal).rgb;
-		vec3 ambient = kD * albedo * irradiance * ao; 
+		vec3 diffuse = irradiance * albedo;
+
+		// Specular IBL
+		const float MAX_REFLECTION_LOD = 4.0;
+		vec3 R = reflect(-viewDir, normal);
+		vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+		vec2 envBRDF = texture(brdfLUT, vec2(max(dot(normal, viewDir), 0.0), roughness)).rg;
+		vec3 specular = prefilteredColor * (F0 * envBRDF.x + envBRDF.y);
+        if (specularIBLOnlyMirror && !(roughness < 0.01 && metallic > 0.99)) {
+            specular = vec3(0.0);
+        }
+
+		vec3 ambient = (kD * diffuse + specular) * ao; 
 		Lo += ambient;
 	} else {
 		vec3 ambient = globalAmbient * albedo * ao;

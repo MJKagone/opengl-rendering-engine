@@ -35,8 +35,6 @@ public:
     // model data 
     vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
     vector<Mesh> meshes;
-    vector<Mesh> opaqueMeshes;
-    vector<Mesh> transparentMeshes;
     string directory;
     bool gammaCorrection;
     bool hasEmbeddedTextures;
@@ -47,6 +45,15 @@ public:
         loadModel(path);
     }
 
+    ~Model()
+    {
+        for(size_t i = 0; i < textures_loaded.size(); i++)
+            glDeleteTextures(1, &textures_loaded[i].id);
+    }
+
+    Model(const Model&) = delete;
+    Model& operator=(const Model&) = delete;
+
     // draws the model, and thus all its meshes
     void draw(Shader &shader)
     {
@@ -56,14 +63,16 @@ public:
 
     void drawOpaque(Shader &shader)
     {
-        for(size_t i = 0; i < opaqueMeshes.size(); i++)
-            opaqueMeshes[i].draw(shader);
+        for(size_t i = 0; i < meshes.size(); i++)
+            if (!meshes[i].isTransparent)
+                meshes[i].draw(shader);
     }
 
     void drawTransparent(Shader &shader)
     {
-        for(size_t i = 0; i < transparentMeshes.size(); i++)
-            transparentMeshes[i].draw(shader);
+        for(size_t i = 0; i < meshes.size(); i++)
+            if (meshes[i].isTransparent)
+                meshes[i].draw(shader);
     }
 
 private:
@@ -77,7 +86,14 @@ private:
 
         // read file via ASSIMP
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_PreTransformVertices);
+        const aiScene* scene = importer.ReadFile(path, 
+            aiProcess_Triangulate | 
+            aiProcess_JoinIdenticalVertices |
+            aiProcess_FlipUVs | 
+            aiProcess_GenSmoothNormals |
+            aiProcess_CalcTangentSpace | 
+            aiProcess_PreTransformVertices
+        );
         // check for errors
         if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) // if is Not Zero
         {
@@ -100,12 +116,7 @@ private:
             // the node object only contains indices to index the actual objects in the scene. 
             // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            Mesh processedMesh = processMesh(mesh, scene);
-            if (processedMesh.isTransparent)
-                transparentMeshes.push_back(processedMesh);
-            else
-                opaqueMeshes.push_back(processedMesh);
-            meshes.push_back(processedMesh);
+            meshes.push_back(processMesh(mesh, scene));
         }
         // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for(unsigned int i = 0; i < node->mNumChildren; i++)
@@ -207,13 +218,21 @@ private:
         bool hasEmissionTexture = !emissionMaps.empty();
         // 6. metallic maps
         std::vector<Texture> metallicMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", false, scene);
+        if (metallicMaps.empty()) {
+            metallicMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_metallic", false, scene);
+        }
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
         bool hasMetallicTexture = !metallicMaps.empty();
+
         // 7. roughness maps
         std::vector<Texture> roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", false, scene);
-        // FBX fallback: roughness packed into shininess
+        // FBX fallback
         if (roughnessMaps.empty()) {
             roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", false, scene);
+        }
+        // glTF fallback
+        if (roughnessMaps.empty()) {
+            roughnessMaps = loadMaterialTextures(material, aiTextureType_UNKNOWN, "texture_roughness", false, scene);
         }
         textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         bool hasRoughnessTexture = !roughnessMaps.empty();
@@ -221,6 +240,11 @@ private:
         std::vector<Texture> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, "texture_ao", false, scene);
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
         bool hasAOTexture = !aoMaps.empty();
+
+        float roughnessFactor = 0.9f;
+        float metallicFactor = 0.0f;
+        material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughnessFactor);
+        material->Get(AI_MATKEY_METALLIC_FACTOR, metallicFactor);
 
         // Robust material color extraction chain
         glm::vec3 diffuseColor(1.0f); 
@@ -266,7 +290,7 @@ private:
         bool isTransparent = (opacity < 0.99f);
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, hasEmbeddedTextures, shininess, opacity, isTransparent);
+        return Mesh(std::move(vertices), std::move(indices), std::move(textures), diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, hasEmbeddedTextures, shininess, opacity, isTransparent, roughnessFactor, metallicFactor);
         
     }
 
@@ -451,8 +475,12 @@ GLuint TextureFromFile(const char *path, const string &directory, bool gamma)
 
         glBindTexture(GL_TEXTURE_2D, textureID);
         if (nrComponents == 1) {
+            // Green gets Red so 1-channel roughness works for glTF
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+            
+            // If it's a color map (gamma == true), output grayscale (R,R,R). 
+            // If it's a data map, output (R,R,0) so Metallic stays 0.0.
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, gamma ? GL_RED : GL_ZERO);
         }
         
         // Tell OpenGL to expect 1-byte aligned data tightly packed by stbi_load
@@ -525,8 +553,12 @@ GLuint TextureFromEmbedded(const aiTexture *embeddedTex, bool gamma)
 
     glBindTexture(GL_TEXTURE_2D, textureID);
     if (nrComponents == 1) {
+        // Green gets Red so 1-channel roughness works for glTF
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_RED);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_RED);
+        
+        // If it's a color map (gamma == true), output grayscale (R,R,R). 
+        // If it's a data map, output (R,R,0) so Metallic stays 0.0.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, gamma ? GL_RED : GL_ZERO);
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     
