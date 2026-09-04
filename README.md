@@ -39,8 +39,13 @@ Note: none of the assets or third-party libraries are included in this repositor
 `<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension). By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin, always facing it.
 
 ## Future Plans
+- [ ] **Major refactoring**: Split `main.cpp` into multiple files and classes for better organization and maintainability
+  * Add support for deferred rendering and split the forward/deferred pipelines
+- [ ] **Spotlight support**: Add spotlights with configurable cutoff angles and attenuation
 - [ ] **Bloom**: Add bloom post-processing effects for light sources
-- [ ] **Stencil outlining & object selection**: Highlight selected objects using stencil buffer techniques and move them in-engine
+- [ ] **Stencil outlining, object selection & scene editing**: Highlight selected objects using stencil buffer techniques and move them in-engine, with the ability to save the scene configuration back to JSON
+- [ ] **MAYBE: Ray tracing?**
+- [ ] **MAYBE: Point cloud & Gaussian splat rendering?**
 
 ## Controls
 
