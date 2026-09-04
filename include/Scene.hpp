@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <memory>
 #include <fstream>
 #include <iostream>
 #include <glm/glm.hpp>
@@ -63,7 +64,7 @@ public:
     glm::vec3 skyboxRotation = glm::vec3(0.0f);
     bool specularIBLOnlyMirror = false;
 
-    std::unordered_map<std::string, Model*> modelCache;
+    std::unordered_map<std::string, std::unique_ptr<Model>> modelCache;
 
     bool loadFromJSON(const std::string& filepath) {
         std::ifstream file(filepath);
@@ -127,9 +128,9 @@ public:
                 std::string modelPath = entityNode["modelPath"];
                 if (modelCache.find(modelPath) == modelCache.end()) {
                     std::cout << "Loading model: " << modelPath << std::endl;
-                    modelCache[modelPath] = new Model(modelPath);
+                    modelCache[modelPath] = std::make_unique<Model>(modelPath);
                 }
-                entity.model = modelCache[modelPath];
+                entity.model = modelCache[modelPath].get();
 
                 entities.push_back(entity);
             }
@@ -142,14 +143,5 @@ public:
         for (auto& entity : entities) {
             entity.transform.rotation += entity.transform.rotationVelocity * deltaTime;
         }
-    }
-
-    void cleanUp() {
-        for (auto& pair : modelCache) {
-            delete pair.second;
-        }
-        modelCache.clear();
-        entities.clear();
-        pointLights.clear();
     }
 };

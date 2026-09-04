@@ -35,8 +35,6 @@ public:
     // model data 
     vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
     vector<Mesh> meshes;
-    vector<Mesh> opaqueMeshes;
-    vector<Mesh> transparentMeshes;
     string directory;
     bool gammaCorrection;
     bool hasEmbeddedTextures;
@@ -47,6 +45,15 @@ public:
         loadModel(path);
     }
 
+    ~Model()
+    {
+        for(size_t i = 0; i < textures_loaded.size(); i++)
+            glDeleteTextures(1, &textures_loaded[i].id);
+    }
+
+    Model(const Model&) = delete;
+    Model& operator=(const Model&) = delete;
+
     // draws the model, and thus all its meshes
     void draw(Shader &shader)
     {
@@ -56,14 +63,16 @@ public:
 
     void drawOpaque(Shader &shader)
     {
-        for(size_t i = 0; i < opaqueMeshes.size(); i++)
-            opaqueMeshes[i].draw(shader);
+        for(size_t i = 0; i < meshes.size(); i++)
+            if (!meshes[i].isTransparent)
+                meshes[i].draw(shader);
     }
 
     void drawTransparent(Shader &shader)
     {
-        for(size_t i = 0; i < transparentMeshes.size(); i++)
-            transparentMeshes[i].draw(shader);
+        for(size_t i = 0; i < meshes.size(); i++)
+            if (meshes[i].isTransparent)
+                meshes[i].draw(shader);
     }
 
 private:
@@ -107,12 +116,7 @@ private:
             // the node object only contains indices to index the actual objects in the scene. 
             // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            Mesh processedMesh = processMesh(mesh, scene);
-            if (processedMesh.isTransparent)
-                transparentMeshes.push_back(processedMesh);
-            else
-                opaqueMeshes.push_back(processedMesh);
-            meshes.push_back(processedMesh);
+            meshes.push_back(processMesh(mesh, scene));
         }
         // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for(unsigned int i = 0; i < node->mNumChildren; i++)
@@ -286,7 +290,7 @@ private:
         bool isTransparent = (opacity < 0.99f);
         
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures, diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, hasEmbeddedTextures, shininess, opacity, isTransparent, roughnessFactor, metallicFactor);
+        return Mesh(std::move(vertices), std::move(indices), std::move(textures), diffuseColor, hasDiffuseTexture, hasSpecularTexture, hasNormalTexture, hasMetallicTexture, hasRoughnessTexture, hasAOTexture, hasEmissionTexture, hasEmbeddedTextures, shininess, opacity, isTransparent, roughnessFactor, metallicFactor);
         
     }
 

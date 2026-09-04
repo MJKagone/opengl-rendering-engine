@@ -6,7 +6,7 @@ all: build/main
 
 # Include the headers as prerequisites
 build/main: src/main.cpp utils/glad.c $(HEADERS)
-	g++ src/main.cpp utils/glad.c -o build/main -Iinclude -Iinclude/third-party -lglfw -ldl -lGL -lassimp
+	g++ src/main.cpp utils/glad.c -o build/main -Iinclude -Iinclude/third-party -lglfw -ldl -lGL -lassimp -O2
 
 clean:
 	rm -f build/main

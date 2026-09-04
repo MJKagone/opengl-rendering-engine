@@ -83,6 +83,77 @@ public:
         setupMesh();
     }
 
+    ~Mesh()
+    {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &EBO);
+    }
+
+    Mesh(const Mesh&) = delete;
+    Mesh& operator=(const Mesh&) = delete;
+
+    Mesh(Mesh&& other) noexcept
+        : VAO(other.VAO),
+          vertices(std::move(other.vertices)),
+          indices(std::move(other.indices)),
+          textures(std::move(other.textures)),
+          diffuseColor(other.diffuseColor),
+          shininess(other.shininess),
+          opacity(other.opacity),
+          roughnessFactor(other.roughnessFactor),
+          metallicFactor(other.metallicFactor),
+          isTransparent(other.isTransparent),
+          hasDiffuseTexture(other.hasDiffuseTexture),
+          hasSpecularTexture(other.hasSpecularTexture),
+          hasNormalTexture(other.hasNormalTexture),
+          hasMetallicTexture(other.hasMetallicTexture),
+          hasRoughnessTexture(other.hasRoughnessTexture),
+          hasAOTexture(other.hasAOTexture),
+          hasEmissionTexture(other.hasEmissionTexture),
+          hasEmbeddedTextures(other.hasEmbeddedTextures),
+          VBO(other.VBO),
+          EBO(other.EBO)
+    {
+        other.VAO = 0;
+        other.VBO = 0;
+        other.EBO = 0;
+    }
+
+    Mesh& operator=(Mesh&& other) noexcept
+    {
+        if (this != &other)
+        {
+            glDeleteVertexArrays(1, &VAO);
+            glDeleteBuffers(1, &VBO);
+            glDeleteBuffers(1, &EBO);
+            VAO = other.VAO;
+            vertices = std::move(other.vertices);
+            indices = std::move(other.indices);
+            textures = std::move(other.textures);
+            diffuseColor = other.diffuseColor;
+            shininess = other.shininess;
+            opacity = other.opacity;
+            roughnessFactor = other.roughnessFactor;
+            metallicFactor = other.metallicFactor;
+            isTransparent = other.isTransparent;
+            hasDiffuseTexture = other.hasDiffuseTexture;
+            hasSpecularTexture = other.hasSpecularTexture;
+            hasNormalTexture = other.hasNormalTexture;
+            hasMetallicTexture = other.hasMetallicTexture;
+            hasRoughnessTexture = other.hasRoughnessTexture;
+            hasAOTexture = other.hasAOTexture;
+            hasEmissionTexture = other.hasEmissionTexture;
+            hasEmbeddedTextures = other.hasEmbeddedTextures;
+            VBO = other.VBO;
+            EBO = other.EBO;
+            other.VAO = 0;
+            other.VBO = 0;
+            other.EBO = 0;
+        }
+        return *this;
+    }
+
     // render the mesh
     void draw(Shader &shader) 
     {
