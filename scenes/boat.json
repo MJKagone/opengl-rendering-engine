@@ -8,10 +8,10 @@
   "entities": [
     {
       "name": "boat",
-      "modelPath": "assets/models/boats/bigboat.glb",
+      "modelPath": "assets/models/boats/smallboat.glb",
       "position": [0.0, 0.0, 0.0],
       "rotation": [0.0, -30.0, 0.0],
-      "scale": [1.5, 1.5, 1.5]
+      "scale": [20.5, 20.5, 20.5]
     }
   ]
 }

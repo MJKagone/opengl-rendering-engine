@@ -1,0 +1,38 @@
+{
+  "environment": {
+    "skyboxPath": ["assets/skybox/lakeside.hdr"],
+    "exposure": 1.0,
+    "globalAmbient": 0.08,
+    "skyboxRotation": [0.0, 0.0, 0.0],
+    "specularIBLOnlyMirror": false
+  },
+  "camera": {
+    "orbit": {
+      "radius": 30.0,
+      "height": 10.0,
+      "speed": 15.0
+    }
+  },
+  "pointLights": [
+    {
+      "position": [0.0, 5.0, 0.0],
+      "color": [255, 244, 214],
+      "intensity": 1.0
+    }
+  ],
+  "directionalLight": {
+    "position": [10.0, 20.0, 10.0],
+    "color": [255, 244, 214],
+    "intensity": 1.0
+  },
+  "entities": [
+    {
+      "name": "example-entity",
+      "modelPath": "assets/models/boats/bigboat.glb",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "rotationVelocity": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0]
+    }
+  ]
+}

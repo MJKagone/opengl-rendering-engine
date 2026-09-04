@@ -43,6 +43,7 @@ bool lightToggle = true;
 bool iblToggle = true;
 bool specularIBLOnlyMirror = false;
 bool environmentChanged = false;
+bool orbitMode = false;
 
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
@@ -121,6 +122,10 @@ int main(int argc, char* argv[]) {
     // Initialize argparse
     argparse::ArgumentParser program("LearnOpenGL");
     program.add_argument("input_scene").help("Path to the input scene.json");
+    program.add_argument("--orbit")
+        .help("Enable orbit camera mode (constantly circles the scene origin)")
+        .default_value(false)
+        .implicit_value(true);
     try {
         program.parse_args(argc, argv);
     } catch (const std::exception& err) {
@@ -128,6 +133,7 @@ int main(int argc, char* argv[]) {
         std::cerr << program;
         return 1;
     }
+    orbitMode = program.get<bool>("--orbit");
     std::string scene_path = "scenes/" + program.get<std::string>("input_scene") + ".json";
 
     // Initialize GLFW
@@ -402,6 +408,11 @@ int main(int argc, char* argv[]) {
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
             scene.update(deltaTime);
+
+            // Orbit camera mode
+            if (orbitMode) {
+                cam.processOrbit(deltaTime, scene.orbit.radius, scene.orbit.height, scene.orbit.speed);
+            }
 
             // FPS counter
             frameCount++;
@@ -789,6 +800,8 @@ void mouse_callback(GLFWwindow* window, double xPos, double yPos)
         firstMouse = false;
     }
 
+    if (orbitMode) { return; }
+
     float xOffset = xPos - lastX;
     float yOffset = lastY - yPos; // y-axis is reversed
     lastX = xPos;
@@ -903,6 +916,8 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    if (orbitMode) { return; }
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {cam.processKeyboard(Camera::FORWARD, deltaTime);}
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {cam.processKeyboard(Camera::BACKWARD, deltaTime);}

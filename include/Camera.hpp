@@ -28,6 +28,7 @@ public:
     float pitch = 0.0f;
     bool firstMouse = true;
     float fov = 45.0f;
+    float orbitAngle = 0.0f; // Degrees, orbit mode state
     
     Camera(glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f)) {
         this->pos = cameraPos;
@@ -63,6 +64,13 @@ public:
         this->front.y = sin(glm::radians(pitch));
         this->front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
         this->front = glm::normalize(this->front);
+    }
+
+    void processOrbit(float deltaTime, float radius, float height, float speedDegPerSec) {
+        this->orbitAngle -= speedDegPerSec * deltaTime;
+        float angle = glm::radians(this->orbitAngle);
+        this->pos = glm::vec3(cos(angle) * radius, height, sin(angle) * radius);
+        this->front = glm::normalize(-this->pos); // Always face the origin
     }
 
     void processScroll(float deltaY) {

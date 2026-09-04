@@ -52,11 +52,18 @@ struct DirLightData {
     float intensity = 0.0f;
 };
 
+struct OrbitParams {
+    float radius = 30.0f;
+    float height = 17.0f;
+    float speed = 20.0f; // Degrees per second
+};
+
 class Scene {
 public:
     std::vector<Entity> entities;
     std::vector<PointLightData> pointLights;
     DirLightData dirLight;
+    OrbitParams orbit;
     
     float globalAmbient = 0.08f;
     float exposure = 1.0f;
@@ -89,6 +96,13 @@ public:
             globalAmbient = data["environment"].value("globalAmbient", 0.08f);
             skyboxRotation = parseVec3(data["environment"].value("skyboxRotation", std::vector<float>{0.0f, 0.0f, 0.0f}));
             specularIBLOnlyMirror = data["environment"].value("specularIBLOnlyMirror", false);
+        }
+
+        if (data.contains("camera") && data["camera"].contains("orbit")) {
+            auto orbitNode = data["camera"]["orbit"];
+            orbit.radius = orbitNode.value("radius", orbit.radius);
+            orbit.height = orbitNode.value("height", orbit.height);
+            orbit.speed = orbitNode.value("speed", orbit.speed);
         }
 
         if (data.contains("pointLights")) {

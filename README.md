@@ -24,9 +24,19 @@ Note: none of the assets or third-party libraries are included in this repositor
   * Omnidirectional point light shadows using depth cubemaps and geometry shaders
   * Percentage-Closer Filtering (PCF) for softer shadow edges
 - [x] **Skybox**: Equirectangular skybox with seamless cubemap sampling
-- [x] **Camera system**: Interactive 3D fly-camera with zoom
+- [x] **Camera system**:
+  * Interactive 3D fly-camera with zoom
+  * Orbit camera mode (`--orbit`) that circles the scene origin at a fixed radius
 - [x] **Multisample anti-aliasing**: 4x MSAA for smoother edges
 - [x] **Gamma correction & HDR**: Gamma correction and high dynamic range rendering with tone mapping
+
+## Usage
+
+```bash
+./build/main <scene> [--orbit]   # e.g. ./build/main boat --orbit
+```
+
+`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension). By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin, always facing it.
 
 ## Future Plans
 - [ ] **Bloom**: Add bloom post-processing effects for light sources
@@ -50,6 +60,8 @@ Note: none of the assets or third-party libraries are included in this repositor
 | **Up/down** | Increase/decrease camera exposure (HDR) |
 | **Escape** | Close the application | 
 | **NUMPAD 1-9** | Switch between environment maps |
+
+In orbit mode (`--orbit`), mouse look and WASDEQ are disabled and the camera always faces the origin; scroll zoom still works.
 
 ## Dependencies
 
@@ -80,5 +92,9 @@ utils/
 
 The following open-source assets are used in the video demo:
 
-- [Modern Bedroom by Visthétique (edited)](https://sketchfab.com/3d-models/modern-bedroom-b74c53589e334ba1ba4b43883d7c9e21)
-- [Ceiling Fan by Prince Obrymec](https://sketchfab.com/3d-models/ceiling-fan-e16bd23ae02a4d2db89e3a0158821681)
+- [2023 Toyota RAV4 Hybrid by Ddiaz Design](https://sketchfab.com/3d-models/2023-toyota-rav4-hybrid-ed155ad0cb7d447085a519eaff9aa2df)
+- [Urban Street 04 by Andreas Mischok](https://polyhaven.com/a/urban_street_04)
+- [Industrial Pipe & Valve 01 by Philip Modin](https://polyhaven.com/a/industrial_pipe_and_valve_01)
+- [Lakeside by Greg Zaal](https://polyhaven.com/a/lakeside)
+- [Ninomaru Teien by Greg Zaal](https://polyhaven.com/a/ninomaru_teien)
+- [Goegap by Greg Zaal](https://polyhaven.com/a/goegap)
