@@ -39,6 +39,7 @@ Note: none of the assets or third-party libraries are included in this repositor
 `<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension). By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin, always facing it.
 
 ## Future Plans
+- [ ] **Auto-scale models**: Automatically scale models to fit within the camera frustum based on their bounding boxes
 - [ ] **Major refactoring**: Split `main.cpp` into multiple files and classes for better organization and maintainability
   * Add support for deferred rendering and split the forward/deferred pipelines
 - [ ] **Spotlight support**: Add spotlights with configurable cutoff angles and attenuation
