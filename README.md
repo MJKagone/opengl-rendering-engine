@@ -4,7 +4,7 @@
 
 A WIP 3D rendering engine built to learn graphics programming with the help of the [LearnOpenGL](https://learnopengl.com/) tutorials. Interactive scene editing may be added later – for now the engine is primarily a viewer for 3D models and scenes.
 
-Note: The third-party libraries are included in this repository, but the scene assets (models, textures, skyboxes) are not and must be fetched manually – see the [Assets](#assets) section.
+Note: third-party libraries are included in this repository, but the scene assets (models, textures, skyboxes) are not and must be fetched manually – see the [Assets](#assets) section.
 
 ## Features
 
@@ -81,20 +81,21 @@ The following dependencies are vendored in this repository and need no separate 
 ```bash
 git clone https://github.com/MJKagone/opengl-rendering-engine.git
 cd opengl-rendering-engine
-# Install dependencies (Ubuntu/Debian)
-sudo apt install build-essential libglfw3-dev libassimp-dev
+sudo apt install build-essential libglfw3-dev libassimp-dev # dependencies for Ubuntu/Debian
 make
 ```
+
+Usage:
 
 ```bash
 ./build/main <scene> [--orbit]   # e.g. ./build/main example --orbit
 ```
 
-`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension). By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video.
+`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension) that contains the scene configuration. By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video.
 
 ## Assets
 
-The scene files in `scenes/` reference models and skyboxes under `assets/`, none of which are included in this repository. The open-source assets used in the video demo are listed below, download them and place them in the `assets/` folder using the structure defined in `scenes/example.json` or create your own scenes with your own assets.
+The scene files in `scenes/` reference models and skyboxes under `assets/`, none of which are included in this repository. The open-source assets used in the video demo are listed below – download and place them in the `assets/` folder using the structure defined in `scenes/example.json` or create your own scenes with your own assets.
 
 - [2023 Toyota RAV4 Hybrid by Ddiaz Design](https://sketchfab.com/3d-models/2023-toyota-rav4-hybrid-ed155ad0cb7d447085a519eaff9aa2df)
 - [Urban Street 04 by Andreas Mischok](https://polyhaven.com/a/urban_street_04)
