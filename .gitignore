@@ -1,8 +1,6 @@
 .vscode/
 assets/
 build/
-include/third-party/
-utils/
 lightColorCodes.png
 lightDistanceCodes.png
 session-ses_f963.md

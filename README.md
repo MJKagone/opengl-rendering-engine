@@ -2,9 +2,9 @@
 
 [OpenGLScene.webm](https://github.com/user-attachments/assets/8fe7885a-1794-47cd-bbfa-e837afb96715)
 
-A WIP 3D rendering engine built to learn graphics programming with the help of the [LearnOpenGL](https://learnopengl.com/) tutorials. Interactive scene editing will be added later – for now everything is hardcoded in the main application loop.
+A WIP 3D rendering engine built to learn graphics programming with the help of the [LearnOpenGL](https://learnopengl.com/) tutorials. Interactive scene editing may be added later – for now the engine is primarily a viewer for 3D models and scenes.
 
-Note: none of the assets or third-party libraries are included in this repository.
+Note: The third-party libraries are included in this repository, but the scene assets (models, textures, skyboxes) are not and must be fetched manually – see the [Assets](#assets) section.
 
 ## Features
 
@@ -29,14 +29,6 @@ Note: none of the assets or third-party libraries are included in this repositor
   * Orbit camera mode (`--orbit`) that circles the scene origin at a fixed radius
 - [x] **Multisample anti-aliasing**: 4x MSAA for smoother edges
 - [x] **Gamma correction & HDR**: Gamma correction and high dynamic range rendering with tone mapping
-
-## Usage
-
-```bash
-./build/main <scene> [--orbit]   # e.g. ./build/main boat --orbit
-```
-
-`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension). By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin, always facing it.
 
 ## Future Plans
 - [ ] **Auto-scale models**: Automatically scale models to fit within the camera frustum based on their bounding boxes
@@ -72,31 +64,37 @@ In orbit mode (`--orbit`), mouse look and WASDEQ are disabled and the camera alw
 ## Dependencies
 
 * **OpenGL 4.5** (3.3 should also work for now)
-* **GLFW**: Window creation and input handling
-* **GLAD**: OpenGL function pointer loading
-* **GLM**: OpenGL Mathematics library for vector and matrix operations
-* **Assimp**: Open Asset Import Library for loading 3D models
-* **stb_image**: Image loading for textures
-* **argparse**: Command-line argument parsing library
-* **nlohmann/json**: JSON parsing library for scene configuration
+* **GLFW**: Window creation and input handling (library plus development headers)
+* **Assimp**: Open Asset Import Library for loading 3D models (library plus development headers)
 
-For building, the following should be retrieved and added to the project:
+The following dependencies are vendored in this repository and need no separate installation:
+
+* **GLAD**: OpenGL function pointer loading (`include/third-party/glad`, `utils/glad.c`)
+* **GLM**: OpenGL Mathematics library for vector and matrix operations (`include/third-party/glm/`)
+* **KHR**: Khronos platform definitions used by GLAD (`include/third-party/KHR/`)
+* **stb_image**: Image loading for textures (`include/third-party/stb_image.h`)
+* **argparse**: Command-line argument parsing library (`include/third-party/argparse.hpp`)
+* **nlohmann/json**: JSON parsing library for scene configuration (`include/third-party/json.hpp`)
+
+## Building
+
+```bash
+git clone https://github.com/MJKagone/opengl-rendering-engine.git
+cd opengl-rendering-engine
+# Install dependencies (Ubuntu/Debian)
+sudo apt install build-essential libglfw3-dev libassimp-dev
+make
 ```
-include/
-├── third-party/
-│   ├── glad/
-│   ├── glm/
-│   ├── KHR/
-│   ├── argparse/
-│   ├── json/
-│   ├── stb_image.h
-utils/
-├── glad.c
-``` 
+
+```bash
+./build/main <scene> [--orbit]   # e.g. ./build/main example --orbit
+```
+
+`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension). By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video.
 
 ## Assets
 
-The following open-source assets are used in the video demo:
+The scene files in `scenes/` reference models and skyboxes under `assets/`, none of which are included in this repository. The open-source assets used in the video demo are listed below, download them and place them in the `assets/` folder using the structure defined in `scenes/example.json` or create your own scenes with your own assets.
 
 - [2023 Toyota RAV4 Hybrid by Ddiaz Design](https://sketchfab.com/3d-models/2023-toyota-rav4-hybrid-ed155ad0cb7d447085a519eaff9aa2df)
 - [Urban Street 04 by Andreas Mischok](https://polyhaven.com/a/urban_street_04)

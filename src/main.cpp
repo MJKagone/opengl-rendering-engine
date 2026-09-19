@@ -45,8 +45,8 @@ bool specularIBLOnlyMirror = false;
 bool environmentChanged = false;
 bool orbitMode = false;
 
-const int WINDOW_WIDTH = 1280;
-const int WINDOW_HEIGHT = 720;
+const int WINDOW_WIDTH = 1920;
+const int WINDOW_HEIGHT = 1080;
 const int DIR_SHADOW_WIDTH = 2048;
 const int DIR_SHADOW_HEIGHT = 2048;
 const int POINT_SHADOW_WIDTH = 1024;
@@ -90,8 +90,8 @@ int shaderType = PBR;
 
 enum Environment {
     URBAN,
-    INDUSTRIAL,
     SEA,
+    INDUSTRIAL,
     GARDEN,
     DESERT,
     SPACE
@@ -155,6 +155,19 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     glfwMakeContextCurrent(window);
+
+    // Center window
+    int monitorX, monitorY, monitorWidth, monitorHeight;
+    glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &monitorX, &monitorY, &monitorWidth, &monitorHeight);
+
+    int windowWidth, windowHeight;
+    glfwGetWindowSize(window, &windowWidth, &windowHeight);
+
+    glfwSetWindowPos(
+        window,
+        monitorX + (monitorWidth - windowWidth) / 2,
+        monitorY + (monitorHeight - windowHeight) / 2
+    );
 
     // Initialize GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))

@@ -1,6 +1,6 @@
 {
   "environment": {
-    "skyboxPath": ["assets/skybox/lakeside.hdr"],
+    "skyboxPath": ["assets/skybox/urban.hdr"],
     "exposure": 1.0,
     "globalAmbient": 0.08,
     "skyboxRotation": [0.0, 0.0, 0.0],
@@ -9,7 +9,7 @@
   "camera": {
     "orbit": {
       "radius": 30.0,
-      "height": 10.0,
+      "height": 15.0,
       "speed": 15.0
     }
   },
@@ -28,11 +28,11 @@
   "entities": [
     {
       "name": "example-entity",
-      "modelPath": "assets/models/boats/bigboat.glb",
+      "modelPath": "assets/models/cars/toyota.glb",
       "position": [0.0, 0.0, 0.0],
-      "rotation": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 50.0, 0.0],
       "rotationVelocity": [0.0, 0.0, 0.0],
-      "scale": [1.0, 1.0, 1.0]
+      "scale": [500.0, 500.0, 500.0]
     }
   ]
 }
