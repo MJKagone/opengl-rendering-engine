@@ -2,6 +2,11 @@
 #include <math.h>
 #include <ctime>
 #include <vector>
+#include <string>
+#include <stdexcept>
+#include <unordered_map>
+#include <cctype>
+#include <utility>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -45,8 +50,6 @@ bool specularIBLOnlyMirror = false;
 bool environmentChanged = false;
 bool orbitMode = false;
 
-const int WINDOW_WIDTH = 1920;
-const int WINDOW_HEIGHT = 1080;
 const int DIR_SHADOW_WIDTH = 2048;
 const int DIR_SHADOW_HEIGHT = 2048;
 const int POINT_SHADOW_WIDTH = 1024;
@@ -57,8 +60,11 @@ const int IRRADIANCE_WIDTH = 32;
 const int IRRADIANCE_HEIGHT = 32;
 const int PREFILTER_WIDTH = 256;
 const int PREFILTER_HEIGHT = 256;
+
 constexpr int MAX_POINT_LIGHTS = 10;
 
+int WINDOW_WIDTH = 2560;
+int WINDOW_HEIGHT = 1440;
 int frameCount = 0;
 
 const float NEAR_PLANE = 0.5f;
@@ -126,6 +132,9 @@ int main(int argc, char* argv[]) {
         .help("Enable orbit camera mode (constantly circles the scene origin)")
         .default_value(false)
         .implicit_value(true);
+    program.add_argument("--resolution", "-r")
+        .help("Window size as WIDTHxHEIGHT, e.g. 1920x1080")
+        .default_value("1920x1080");
     try {
         program.parse_args(argc, argv);
     } catch (const std::exception& err) {
@@ -135,6 +144,40 @@ int main(int argc, char* argv[]) {
     }
     orbitMode = program.get<bool>("--orbit");
     std::string scene_path = "scenes/" + program.get<std::string>("input_scene") + ".json";
+
+    std::string resArg = program.get<std::string>("--resolution");
+    for (char& c : resArg) {
+        c = std::tolower(static_cast<unsigned char>(c));
+    }
+    static const std::unordered_map<std::string, std::pair<int, int>> resPresets = {
+        {"hd", {1280, 720}},
+        {"fhd", {1920, 1080}},
+        {"qhd", {2560, 1440}},
+        {"4k", {3840, 2160}},
+    };
+    size_t xPos = resArg.find('x');
+    try {
+        auto it = resPresets.find(resArg);
+        int resW, resH;
+        if (xPos == std::string::npos || xPos == 0 || xPos == resArg.size() - 1) {
+            if (it == resPresets.end())
+                throw std::invalid_argument(resArg);
+            std::tie(resW, resH) = it->second;
+        } else {
+            resW = std::stoi(resArg.substr(0, xPos));
+            resH = std::stoi(resArg.substr(xPos + 1));
+        }
+        if (resW <= 0 || resH <= 0 || resW > 16384 || resH > 16384)
+            throw std::out_of_range(resArg);
+        WINDOW_WIDTH = resW;
+        WINDOW_HEIGHT = resH;
+        lastX = WINDOW_WIDTH / 2.0f;
+        lastY = WINDOW_HEIGHT / 2.0f;
+    } catch (const std::exception&) {
+        std::cerr << "Argparse error: argument --resolution/-r: invalid value '" << resArg << "' (expected WIDTHxHEIGHT, e.g. 1920x1080, or a preset: hd, fhd, qhd, 4k)\n";
+        std::cerr << program;
+        return 1;
+    }
 
     // Initialize GLFW
     glfwInit();
