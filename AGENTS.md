@@ -10,7 +10,7 @@ make            # builds build/main from src/main.cpp + utils/glad.c
 make clean      # removes build/main only
 ```
 
-Run a specific scene via CLI, e.g. `./build/main boat` (positional scene name, resolved to `scenes/<name>.json`). Optional `--orbit` flag enables the orbit camera mode.
+Run a specific scene via CLI, e.g. `./build/main boat` (positional scene name, resolved to `scenes/<name>.json`). Optional `--orbit` flag enables the orbit camera mode. Optional `--debug` flag enables the agent diagnostic mode (implies `--orbit`, empties `screenshots/` at startup, renders for 5 seconds saving one PNG screenshot per second into it, then exits).
 
 No lint, typecheck, format, or test commands exist.
 

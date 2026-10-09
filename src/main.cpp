@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <cctype>
 #include <utility>
+#include <filesystem>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -17,6 +18,9 @@
 #include "Shader.hpp"
 #include "Model.hpp"
 #include "Scene.hpp"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 
 // Function declarations
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -36,6 +40,8 @@ void generateBRDFLUT(GLuint &brdfLUTTexture, GLuint &captureFBO, Shader &brdfSha
 GLuint loadCubemap(const std::vector<std::string>& faces);
 GLuint loadEquirectangularMap(const char* path);
 glm::vec3 srgbToLinear(glm::vec3 srgb);
+void resetScreenshotDir();
+void captureScreenshot(GLFWwindow* window, const std::string& filename);
 
 // Global variables
 bool firstMouse = true;
@@ -49,6 +55,7 @@ bool iblToggle = true;
 bool specularIBLOnlyMirror = false;
 bool environmentChanged = false;
 bool orbitMode = false;
+bool debugMode = false;
 
 const int DIR_SHADOW_WIDTH = 2048;
 const int DIR_SHADOW_HEIGHT = 2048;
@@ -74,6 +81,12 @@ const float globalAmbient = 0.08f;
 const float globalLightScale = 1.0f;
 const float orthoScale = 2.0f;
 const float POINT_LIGHT_LINE_SCALE = 5.0f;
+const float DEBUG_DURATION = 5.0f;
+const float DEBUG_INTERVAL = 1.0f;
+const int DEBUG_MAX_SCREENSHOTS = 5;
+
+float debugTimer = 0.0f;
+int debugScreenshotsTaken = 0;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
@@ -132,6 +145,10 @@ int main(int argc, char* argv[]) {
         .help("Enable orbit camera mode (constantly circles the scene origin)")
         .default_value(false)
         .implicit_value(true);
+    program.add_argument("--debug")
+        .help("Agent diagnostic mode: empties the screenshots folder, renders in orbit mode for 5 seconds and saves one screenshot per second")
+        .default_value(false)
+        .implicit_value(true);
     program.add_argument("--resolution", "-r")
         .help("Window size as WIDTHxHEIGHT, e.g. 1920x1080")
         .default_value("1920x1080");
@@ -143,7 +160,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     orbitMode = program.get<bool>("--orbit");
-    std::string scene_path = "scenes/" + program.get<std::string>("input_scene") + ".json";
+    debugMode = program.get<bool>("--debug");
+    if (debugMode) {orbitMode = true;}
+    std::string sceneName = program.get<std::string>("input_scene");
+    std::string scene_path = "scenes/" + sceneName + ".json";
 
     std::string resArg = program.get<std::string>("--resolution");
     for (char& c : resArg) {
@@ -180,6 +200,10 @@ int main(int argc, char* argv[]) {
     }
 
     // Initialize GLFW
+    if (debugMode) {
+        resetScreenshotDir();
+        std::cout << "Debug mode: screenshots folder emptied, saving one screenshot per second for " << DEBUG_DURATION << " seconds in orbit mode\n";
+    }
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
@@ -804,6 +828,19 @@ int main(int argc, char* argv[]) {
             glDrawArrays(GL_TRIANGLES, 0, 6);
             glEnable(GL_DEPTH_TEST);
 
+            // Debug screenshot capture: one per second in orbit mode, then exit
+            if (debugMode) {
+                debugTimer += deltaTime;
+                if (debugTimer >= DEBUG_INTERVAL && debugScreenshotsTaken < DEBUG_MAX_SCREENSHOTS) {
+                    debugScreenshotsTaken++;
+                    captureScreenshot(window, "screenshots/" + sceneName + "_debug_" + std::to_string(debugScreenshotsTaken) + ".png");
+                    std::cout << "Debug mode: saved screenshot " << debugScreenshotsTaken << "/" << DEBUG_MAX_SCREENSHOTS << "\n";
+                    debugTimer = 0.0f;
+                    if (debugScreenshotsTaken >= DEBUG_MAX_SCREENSHOTS)
+                        glfwSetWindowShouldClose(window, true);
+                }
+            }
+
             glfwSwapBuffers(window);
             glfwPollEvents();
         }
@@ -1419,4 +1456,49 @@ void generateShadowCubemap(GLuint& shadowCubemapFBO, GLuint& shadowCubemap)
 
 glm::vec3 srgbToLinear(glm::vec3 srgb) {
     return glm::vec3(pow(srgb.r, 2.2f), pow(srgb.g, 2.2f), pow(srgb.b, 2.2f));
+}
+
+void resetScreenshotDir() {
+    const std::filesystem::path dir("screenshots");
+    if (!std::filesystem::exists(dir)) {
+        std::filesystem::create_directories(dir);
+        return;
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+        std::error_code ec;
+        if (entry.is_directory(ec)) {
+            std::filesystem::remove_all(entry.path(), ec);
+        } else {
+            std::filesystem::remove(entry.path(), ec);
+        }
+        if (ec) {
+            std::cerr << "Debug mode: failed to remove '" << entry.path().string() << "': " << ec.message() << '\n';
+        }
+    }
+}
+
+// Writes the default framebuffer (tone-mapped back buffer) as a PNG via stb_image_write, rows flipped vertically
+void captureScreenshot(GLFWwindow* window, const std::string& filename) {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Debug mode: invalid framebuffer size, skipping screenshot\n";
+        return;
+    }
+
+    std::vector<unsigned char> pixels(width * height * 3);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadBuffer(GL_BACK);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    // Flip vertically: OpenGL's origin is bottom-left, image formats expect top-left
+    std::vector<unsigned char> flipped(pixels.size());
+    for (int y = 0; y < height; y++) {
+        const unsigned char* src = &pixels[(height - 1 - y) * width * 3];
+        std::memcpy(&flipped[y * width * 3], src, width * 3);
+    }
+
+    if (!stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), width * 3)) {
+        std::cerr << "Debug mode: failed to write '" << filename << "'\n";
+    }
 }
