@@ -10,7 +10,7 @@ make            # builds build/main from src/main.cpp + utils/glad.c
 make clean      # removes build/main only
 ```
 
-Run a specific scene via CLI, e.g. `./build/main boat` (positional scene name, resolved to `scenes/<name>.json`). Optional flags: `--orbit` (orbit camera mode), `--culling N` (1–255, optional load-time splat opacity cull threshold in 1/255 units).
+Run a specific scene via CLI, e.g. `./build/main boat` (positional scene name, resolved to `scenes/<name>.json`). Optional flags: `--culling N` (1–255, optional load-time splat opacity cull threshold in 1/255 units), `--orbit` enables the orbit camera mode, `--debug` enables the diagnostic screenshot mode (implies `--orbit`, empties `screenshots/` at startup, renders for 5 seconds saving one PNG screenshot per second into it, then exits).
 
 No lint, typecheck, format, or test commands exist.
 
