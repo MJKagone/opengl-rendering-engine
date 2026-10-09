@@ -11,6 +11,13 @@ Note: third-party libraries are included in this repository, but the scene asset
 - [x] **Model loading**:
   * Imports complex 3D models and scenes (FBX, OBJ, GLB, etc.) along with their textures using Assimp
   * Scenes can be configured as JSON files located in the `scenes/` folder
+- [x] **Gaussian splatting**:
+  * Renders 3D Gaussian Splatting (3DGS) `.ply` clouds (entities with a `.ply` `modelPath` in the scene JSON)
+  * Raw splat shader: view-dependent spherical harmonics (up to degree 3), composited back-to-front
+  * PBR splat shader: Cook-Torrance + IBL lighting for augmented splats (surface normals, base color, roughness, metallic, e.g. Relightable 3DGS exports)
+  * Supports the standard trained 3DGS and Relightable 3DGS ply layouts; clouds are auto-normalized to fit the default camera
+  * Splats composite over the skybox, are depth-tested against opaque geometry and receive mesh shadows (in the PBR shader); they never cast shadows
+  * Renders 200k+ splats smoothly: per-frame CPU depth sort (radix sort, skipped while the camera is static) and optional load-time opacity culling (`--culling`)
 - [x] **Lighting**:
   * Directional light
   * Point lights with physical attenuation
@@ -38,7 +45,7 @@ Note: third-party libraries are included in this repository, but the scene asset
 - [ ] **Bloom**: Add bloom post-processing effects for light sources
 - [ ] **Stencil outlining, object selection & scene editing**: Highlight selected objects using stencil buffer techniques and move them in-engine, with the ability to save the scene configuration back to JSON
 - [ ] **MAYBE: Ray tracing?**
-- [ ] **MAYBE: Point cloud & Gaussian splat rendering?**
+- [ ] **3DGS improvements**: GPU-side splat sorting/culling (compute shaders), splat shadow casting, baked light transport for Relightable 3DGS (`incidents_*`/`visibility_*`, currently ignored)
 
 ## Controls
 
@@ -54,7 +61,7 @@ Note: third-party libraries are included in this repository, but the scene asset
 | **V** | Toggle V-Sync |
 | **.** | Toggle debug mode (currently: show light sources as cubes) |
 | **Space** | Print current camera position to standard output |
-| **Left/Right** | Switch between shaders (currently: PBR/Phong/constant/depth) |
+| **Left/Right** | Switch between shaders (currently: PBR/Phong/constant/depth/3DGS raw/3DGS PBR) |
 | **Up/down** | Increase/decrease camera exposure (HDR) |
 | **Escape** | Close the application | 
 | **NUMPAD 1-9** | Switch between environment maps |
@@ -88,10 +95,10 @@ make
 Usage:
 
 ```bash
-./build/main <scene> [--orbit] [-r WIDTHxHEIGHT]   # e.g. ./build/main example -r 1920x1080
+./build/main <scene> [--orbit] [--culling N] [-r WIDTHxHEIGHT]   # e.g. ./build/main example -r 1920x1080
 ```
 
-`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension) that contains the scene configuration. By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video. `-r`/`--resolution` sets the window size at launch (default `1920x1080`); it also accepts the case-insensitive presets `hd` (1280x720), `fhd` (1920x1080), `qhd` (2560x1440) and `4k` (3840x2160). Invalid values abort with an error.
+`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension) that contains the scene configuration. By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video. `--culling N` (N in 1-255) discards splats whose opacity is below `N/255` at load time; without the flag, all splats are loaded. `-r`/`--resolution` sets the window size at launch (default `1920x1080`); it also accepts the case-insensitive presets `hd` (1280x720), `fhd` (1920x1080), `qhd` (2560x1440) and `4k` (3840x2160). Invalid values abort with an error.
 
 ## Assets
 

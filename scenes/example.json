@@ -33,6 +33,14 @@
       "rotation": [0.0, 50.0, 0.0],
       "rotationVelocity": [0.0, 0.0, 0.0],
       "scale": [500.0, 500.0, 500.0]
+    },
+    {
+      "name": "example-splat-entity",
+      "modelPath": "splats/jugs_relightable.ply",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "rotationVelocity": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0]
     }
   ]
 }

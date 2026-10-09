@@ -49,6 +49,7 @@ bool iblToggle = true;
 bool specularIBLOnlyMirror = false;
 bool environmentChanged = false;
 bool orbitMode = false;
+bool hasSplats = false;
 
 const int DIR_SHADOW_WIDTH = 2048;
 const int DIR_SHADOW_HEIGHT = 2048;
@@ -90,8 +91,11 @@ enum ShaderType {
     PBR,
     PHONG,
     CONSTANT,
-    DEPTH
+    DEPTH,
+    SPLAT_PBR,
+    SPLAT
 };
+const int SHADER_TYPE_COUNT = 6;
 int shaderType = PBR;
 
 enum Environment {
@@ -135,6 +139,9 @@ int main(int argc, char* argv[]) {
     program.add_argument("--resolution", "-r")
         .help("Window size as WIDTHxHEIGHT, e.g. 1920x1080")
         .default_value("1920x1080");
+    program.add_argument("--culling")
+        .help("Cull splats with opacity below the given alpha threshold in 1/255 units (1-255); no culling if omitted")
+        .default_value("");
     try {
         program.parse_args(argc, argv);
     } catch (const std::exception& err) {
@@ -177,6 +184,25 @@ int main(int argc, char* argv[]) {
         std::cerr << "Argparse error: argument --resolution/-r: invalid value '" << resArg << "' (expected WIDTHxHEIGHT, e.g. 1920x1080, or a preset: hd, fhd, qhd, 4k)\n";
         std::cerr << program;
         return 1;
+    }
+
+    // Optional splat opacity culling: threshold in 1/255 alpha units (1-255);
+    // an empty default means no culling
+    int cullingValue = 0;
+    {
+        std::string cullArg = program.get<std::string>("--culling");
+        if (!cullArg.empty()) {
+            try {
+                size_t parseEnd = 0;
+                cullingValue = std::stoi(cullArg, &parseEnd);
+                if (parseEnd != cullArg.size()) throw std::invalid_argument(cullArg);
+                if (cullingValue < 1 || cullingValue > 255) throw std::out_of_range(cullArg);
+            } catch (const std::exception&) {
+                std::cerr << "Argparse error: argument --culling: invalid value '" << cullArg << "' (expected an integer between 1 and 255)\n";
+                std::cerr << program;
+                return 1;
+            }
+        }
     }
 
     // Initialize GLFW
@@ -257,11 +283,14 @@ int main(int argc, char* argv[]) {
         Shader irradianceShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_irradiance.glsl");
         Shader prefilterShaders("shaders/vertex/vs_skybox.glsl", "shaders/fragment/fs_prefilter.glsl");
         Shader brdfShaders("shaders/vertex/vs_quad.glsl", "shaders/fragment/fs_brdf.glsl");
+        Shader splatShaders("shaders/vertex/vs_splat.glsl", "shaders/fragment/fs_splat.glsl");
+        Shader splatPbrShaders("shaders/vertex/vs_splat.glsl", "shaders/fragment/fs_splat_pbr.glsl");
 
         // stbi_set_flip_vertically_on_load(true);
 
         // Load models and scene parameters from JSON
         Scene scene;
+        scene.splatOpacityCullThreshold = cullingValue / 255.0f; // 0 = no culling
         if (!scene.loadFromJSON(scene_path)) {
             std::cerr << "Failed to load scene from JSON." << std::endl;
             return -1;
@@ -274,6 +303,9 @@ int main(int argc, char* argv[]) {
         }
 
         const int NUM_POINT_LIGHTS = static_cast<int>(scene.pointLights.size());
+
+        hasSplats = !scene.splatEntities.empty();
+        if (hasSplats) {shaderType = SPLAT_PBR;}
 
         // Light cube vertices
         GLuint cubeVBO, cubeVAO;
@@ -395,6 +427,37 @@ int main(int argc, char* argv[]) {
         glActiveTexture(GL_TEXTURE22);
         glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
 
+        splatPbrShaders.use();
+        splatPbrShaders.setInt("numPointLights", NUM_POINT_LIGHTS);
+        splatPbrShaders.setFloat("far_plane", 25.0f);
+        splatPbrShaders.setFloat("globalAmbient", globalAmbient);
+
+        for (int i = 0; i < 10; i++) {
+            splatPbrShaders.setInt("shadowCubemaps[" + std::to_string(i) + "]", 10 + i);
+        }
+
+        if (scene.dirLight.intensity > 0.0f) {
+            splatPbrShaders.setVec3("dirLight.color", srgbToLinear(scene.dirLight.color) * scene.dirLight.intensity);
+            splatPbrShaders.setVec3("dirLight.position", scene.dirLight.position);
+        }
+
+        for (size_t i = 0; i < scene.pointLights.size(); i++) {
+            splatPbrShaders.setVec3("pointLights[" + std::to_string(i) + "].color", srgbToLinear(scene.pointLights[i].color) * scene.pointLights[i].intensity);
+            splatPbrShaders.setVec3("pointLights[" + std::to_string(i) + "].position", scene.pointLights[i].position);
+        }
+
+        splatPbrShaders.setInt("irradianceMap", 20);
+        glActiveTexture(GL_TEXTURE20);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+
+        splatPbrShaders.setInt("prefilterMap", 21);
+        glActiveTexture(GL_TEXTURE21);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+        splatPbrShaders.setInt("brdfLUT", 22);
+        glActiveTexture(GL_TEXTURE22);
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+
         skyboxShaders.use();
         skyboxShaders.setInt("skybox", 0);
 
@@ -418,6 +481,10 @@ int main(int argc, char* argv[]) {
             pbrShaders.setBool("lightToggle", lightToggle);
             pbrShaders.setInt("numPointLights", lightToggle ? NUM_POINT_LIGHTS : 0);
             pbrShaders.setBool("specularIBLOnlyMirror", specularIBLOnlyMirror);
+            splatPbrShaders.use();
+            splatPbrShaders.setBool("lightToggle", lightToggle);
+            splatPbrShaders.setInt("numPointLights", lightToggle ? NUM_POINT_LIGHTS : 0);
+            splatPbrShaders.setBool("specularIBLOnlyMirror", specularIBLOnlyMirror);
             if (environmentChanged) {
                 std::string newSkyboxPath = getSkyboxPath(static_cast<Environment>(environment));
                 if (!newSkyboxPath.empty()) {
@@ -446,10 +513,22 @@ int main(int argc, char* argv[]) {
                     pbrShaders.setInt("prefilterMap", 21);
                     glActiveTexture(GL_TEXTURE21);
                     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
+
+                    splatPbrShaders.use();
+                    splatPbrShaders.setInt("irradianceMap", 20);
+                    glActiveTexture(GL_TEXTURE20);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+
+                    splatPbrShaders.setInt("prefilterMap", 21);
+                    glActiveTexture(GL_TEXTURE21);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap);
                 }
                 environmentChanged = false;
             }
+            pbrShaders.use();
             pbrShaders.setBool("iblToggle", iblToggle);
+            splatPbrShaders.use();
+            splatPbrShaders.setBool("iblToggle", iblToggle);
 
             // Clear background
             if (shaderType == DEPTH) {
@@ -483,13 +562,16 @@ int main(int argc, char* argv[]) {
             /////////////////////////////////////////////////////////
             // 1. PASS: RENDER SHADOW MAP FROM LIGHTS' PERSPECTIVE //
             /////////////////////////////////////////////////////////
-            if (lightToggle && (shaderType == PHONG or shaderType == PBR)) {
+            // (hoisted so the splat pass can reuse it for receiving shadows)
+            glm::mat4 dirLightSpaceMatrix = glm::mat4(1.0f);
+            if (lightToggle && (shaderType == PHONG or shaderType == PBR or shaderType == SPLAT_PBR)) {
 
                 // 1.1: Render directional light shadow map
                 if (scene.dirLight.intensity > 0.0f) {
                     glm::mat4 lightProjection = glm::ortho(orthoScale * -10.0f, orthoScale * 10.0f, orthoScale * -10.0f, orthoScale * 10.0f, NEAR_PLANE, FAR_PLANE);
                     glm::mat4 lightView = glm::lookAt(scene.dirLight.position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
                     glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+                    dirLightSpaceMatrix = lightSpaceMatrix;
 
                     glCullFace(GL_FRONT);
 
@@ -521,6 +603,12 @@ int main(int argc, char* argv[]) {
                         pbrShaders.use();
                         pbrShaders.setInt("shadowMap", 9); // 1 -> 9, Gemini suggestion
                         pbrShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
+                        glActiveTexture(GL_TEXTURE9);
+                        glBindTexture(GL_TEXTURE_2D, shadowMap);
+                    } else if (shaderType == SPLAT_PBR) {
+                        splatPbrShaders.use();
+                        splatPbrShaders.setInt("shadowMap", 9);
+                        splatPbrShaders.setMat4("dirLightSpaceMatrix", lightSpaceMatrix);
                         glActiveTexture(GL_TEXTURE9);
                         glBindTexture(GL_TEXTURE_2D, shadowMap);
                     }
@@ -583,6 +671,11 @@ int main(int argc, char* argv[]) {
                         } else if (shaderType == PBR) {
                             pbrShaders.use();
                             pbrShaders.setInt(shadowCubemapNames[i], 10 + i);
+                            glActiveTexture(GL_TEXTURE10 + i);
+                            glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
+                        } else if (shaderType == SPLAT_PBR) {
+                            splatPbrShaders.use();
+                            splatPbrShaders.setInt(shadowCubemapNames[i], 10 + i);
                             glActiveTexture(GL_TEXTURE10 + i);
                             glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubemap[i]);
                         }
@@ -737,7 +830,8 @@ int main(int argc, char* argv[]) {
             ////////////////////////////////////
             // 3. PASS: RENDER SKYBOX TO QUAD //
             ////////////////////////////////////
-            if ((!scene.skyboxPath.empty() && shaderType == PHONG) or (!scene.skyboxPath.empty() && shaderType == PBR))
+            if (!scene.skyboxPath.empty() &&
+                (shaderType == PHONG or shaderType == PBR or shaderType == SPLAT or shaderType == SPLAT_PBR))
             {
                 glDepthFunc(GL_LEQUAL);
                 glDisable(GL_CULL_FACE);
@@ -791,8 +885,54 @@ int main(int argc, char* argv[]) {
 
             glDepthMask(GL_TRUE);
 
+            ////////////////////////////////////////////
+            // 5. PASS: RENDER GAUSSIAN SPLATS TO QUAD //
+            ////////////////////////////////////////////
+            if ((shaderType == SPLAT or shaderType == SPLAT_PBR) && !scene.splatEntities.empty()) {
+                // Blended back-to-front, depth-tested against opaque geometry
+                // but never writing depth; face culling off (quad winding is
+                // per-splat arbitrary)
+                glDepthMask(GL_FALSE);
+                glDisable(GL_CULL_FACE);
+
+                Shader& splatShader = (shaderType == SPLAT) ? splatShaders : splatPbrShaders;
+                splatShader.use();
+                splatShader.setMat4("view", view);
+                splatShader.setMat4("projection", projection);
+                splatShader.setVec2("viewport", glm::vec2((float)WINDOW_WIDTH, (float)WINDOW_HEIGHT));
+                splatShader.setVec3("viewPos", cam.pos);
+                if (shaderType == SPLAT_PBR) {
+                    splatPbrShaders.setMat4("dirLightSpaceMatrix", dirLightSpaceMatrix);
+                }
+
+                // Multiple clouds: draw the farthest first (coarse per-entity
+                // ordering on top of each cloud's per-splat sort)
+                std::vector<std::pair<float, size_t>> splatEntityOrder(scene.splatEntities.size());
+                for (size_t i = 0; i < scene.splatEntities.size(); i++) {
+                    const SplatEntity& splatEntity = scene.splatEntities[i];
+                    glm::vec3 centroidView = glm::vec3(view * splatEntity.transform.getMatrix() * glm::vec4(splatEntity.cloud->centroid, 1.0f));
+                    splatEntityOrder[i] = { centroidView.z, i };
+                }
+                std::sort(splatEntityOrder.begin(), splatEntityOrder.end(),
+                          [](const std::pair<float, size_t>& a, const std::pair<float, size_t>& b) {
+                              return a.first < b.first;
+                          });
+
+                for (const auto& [centroidDepth, entityIndex] : splatEntityOrder) {
+                    const SplatEntity& splatEntity = scene.splatEntities[entityIndex];
+                    glm::mat4 model = splatEntity.transform.getMatrix();
+                    splatEntity.cloud->updateSort(view, model);
+                    splatShader.setMat4("model", model);
+                    splatShader.setInt("shDegree", splatEntity.cloud->shDegree);
+                    splatEntity.cloud->draw();
+                }
+
+                glEnable(GL_CULL_FACE);
+                glDepthMask(GL_TRUE);
+            }
+
             ////////////////////////////////////
-            // 5. PASS: RENDER QUAD TO SCREEN //
+            // 6. PASS: RENDER QUAD TO SCREEN //
             ////////////////////////////////////
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -873,13 +1013,14 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+    if ((key == GLFW_KEY_LEFT or key == GLFW_KEY_RIGHT) && action == GLFW_PRESS)
     {
-        if (shaderType <= PBR) {shaderType = DEPTH;} else {shaderType--;}
-    }
-    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
-    {
-        if (shaderType >= DEPTH) {shaderType = PBR;} else {shaderType++;}
+        int step = (key == GLFW_KEY_RIGHT) ? 1 : -1;
+        shaderType += step;
+        if (!hasSplats && shaderType > DEPTH) {shaderType = PBR;}
+        else if (!hasSplats && shaderType < PBR) {shaderType = DEPTH;}
+        else if (hasSplats && shaderType > SPLAT) {shaderType = SPLAT_PBR;}
+        else if (hasSplats && shaderType < SPLAT_PBR) {shaderType = SPLAT;}
     }
     if (key == GLFW_KEY_B && action == GLFW_PRESS)
     {

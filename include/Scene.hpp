@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "Model.hpp"
+#include "GaussianCloud.hpp"
 #include <json.hpp>
 
 using json = nlohmann::json;
@@ -40,6 +41,14 @@ struct Entity {
     Transform transform;
 };
 
+// Entities whose modelPath points at a 3DGS .ply file; rendered by the
+// dedicated splat passes in main.cpp instead of the mesh passes
+struct SplatEntity {
+    std::string name;
+    GaussianCloud* cloud;
+    Transform transform;
+};
+
 struct PointLightData {
     glm::vec3 position;
     glm::vec3 color;
@@ -61,6 +70,7 @@ struct OrbitParams {
 class Scene {
 public:
     std::vector<Entity> entities;
+    std::vector<SplatEntity> splatEntities;
     std::vector<PointLightData> pointLights;
     DirLightData dirLight;
     OrbitParams orbit;
@@ -72,6 +82,11 @@ public:
     bool specularIBLOnlyMirror = false;
 
     std::unordered_map<std::string, std::unique_ptr<Model>> modelCache;
+    std::unordered_map<std::string, std::unique_ptr<GaussianCloud>> splatCache;
+
+    // Optional load-time opacity cull for splat clouds (opacity units, set
+    // from the --culling CLI flag). 0 disables culling.
+    float splatOpacityCullThreshold = 0.0f;
 
     bool loadFromJSON(const std::string& filepath) {
         std::ifstream file(filepath);
@@ -140,6 +155,28 @@ public:
                 entity.transform.scale = parseVec3(entityNode["scale"]);
 
                 std::string modelPath = entityNode["modelPath"];
+
+                // .ply model paths are loaded as 3D Gaussian splat clouds
+                std::string extension = modelPath.substr(modelPath.find_last_of('.') + 1);
+                for (char& c : extension) {
+                    c = std::tolower(static_cast<unsigned char>(c));
+                }
+                if (extension == "ply") {
+                    if (splatCache.find(modelPath) == splatCache.end()) {
+                        std::cout << "Loading splat cloud: " << modelPath << std::endl;
+                        splatCache[modelPath] = std::make_unique<GaussianCloud>();
+                        if (!splatCache[modelPath]->loadFromPLY(modelPath, 30.0f, splatOpacityCullThreshold)) {
+                            return false;
+                        }
+                    }
+                    SplatEntity splatEntity;
+                    splatEntity.name = entity.name;
+                    splatEntity.transform = entity.transform;
+                    splatEntity.cloud = splatCache[modelPath].get();
+                    splatEntities.push_back(splatEntity);
+                    continue;
+                }
+
                 if (modelCache.find(modelPath) == modelCache.end()) {
                     std::cout << "Loading model: " << modelPath << std::endl;
                     modelCache[modelPath] = std::make_unique<Model>(modelPath);
@@ -156,6 +193,9 @@ public:
     void update(float deltaTime) {
         for (auto& entity : entities) {
             entity.transform.rotation += entity.transform.rotationVelocity * deltaTime;
+        }
+        for (auto& splatEntity : splatEntities) {
+            splatEntity.transform.rotation += splatEntity.transform.rotationVelocity * deltaTime;
         }
     }
 };
