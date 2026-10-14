@@ -1,5 +1,6 @@
 {
   "environment": {
+    "skybox": "assets/skybox/urban.hdr",
     "exposure": 1.0,
     "globalAmbient": 0.08
   },
@@ -13,7 +14,7 @@
   "entities": [
     {
       "name": "splat",
-      "modelPath": "assets/splats/hotdogs_default.ply",
+      "modelPath": "assets/splats/hotdog_default.ply",
       "position": [-20.0, 0.0, 0.0],
       "rotation": [-90.0, 0.0, 3.0],
       "rotationVelocity": [0.0, 0.0, 0.0],
@@ -21,7 +22,7 @@
     },
     {
       "name": "splat",
-      "modelPath": "assets/splats/hotdogs_neilf.ply",
+      "modelPath": "assets/splats/hotdog_neilf.ply",
       "position": [20.0, 0.0, 0.0],
       "rotation": [-90.0, 0.0, 3.0],
       "rotationVelocity": [0.0, 0.0, 0.0],

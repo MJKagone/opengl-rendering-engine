@@ -1,5 +1,6 @@
 {
   "environment": {
+    "skybox": "assets/skybox/urban.hdr",
     "exposure": 1.0,
     "globalAmbient": 0.08
   },

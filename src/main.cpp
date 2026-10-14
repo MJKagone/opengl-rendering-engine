@@ -857,7 +857,7 @@ int main(int argc, char* argv[]) {
             ////////////////////////////////////
             // 3. PASS: RENDER SKYBOX TO QUAD //
             ////////////////////////////////////
-            if (!scene.skyboxPath.empty() &&
+            if (!scene.skyboxPath.empty() && skyboxToggle &&
                 (shaderType == PHONG or shaderType == PBR or shaderType == SPLAT or shaderType == SPLAT_PBR))
             {
                 glDepthFunc(GL_LEQUAL);
@@ -1063,7 +1063,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         else if (hasSplats && shaderType > SPLAT) {shaderType = SPLAT_PBR;}
         else if (hasSplats && shaderType < SPLAT_PBR) {shaderType = SPLAT;}
     }
-    if (key == GLFW_KEY_B && action == GLFW_PRESS)
+    if (key == GLFW_KEY_0 && action == GLFW_PRESS)
     {
         if (skyboxToggle == false) {skyboxToggle = true;} else {skyboxToggle = false;}
     }
