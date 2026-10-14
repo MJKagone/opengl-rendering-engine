@@ -26,8 +26,9 @@ struct GPUSplat {
     glm::vec4 scaleRough;  // xyz: exp(scale_i), w: roughness
     glm::vec4 colorMetal; // rgb: base color (base_color if present, else f_dc), a: metallic
     glm::vec4 normal;      // xyz: unit normal (from file, or gaussian's shortest axis)
-    glm::vec4 sh[12];      // f_rest_0..44 in ply order (i = 3*coef + channel),
-                           // followed by f_dc_0..2 stored in sh[11].yzw
+    glm::vec4 sh[12];      // f_rest_0..44 stored verbatim in ply order, which
+                           // is channel-major on disk (f_rest_{c*15 + k-1});
+                           // f_dc_0..2 parked in sh[11].yzw
 };
 
 // A cloud of 3D Gaussians loaded from a .ply file. Supports the standard
@@ -357,8 +358,9 @@ inline bool GaussianCloud::loadFromPLY(const std::string& path, float targetDiag
         }
         g.normal = glm::vec4(glm::normalize(normal), 0.0f);
 
-        // SH coefficients: f_rest in ply order (i = 3*coef + channel),
-        // f_dc parked in the 3 spare slots at the end of the sh array
+        // SH coefficients: f_rest stored verbatim in ply order (channel-major:
+        // strictly speaking f_rest_{c*15 + k-1} = coefficient k of channel c,
+        // the shader interprets it accordingly), f_dc parked at the end
         for (int r = 0; r < 45; r++) {
             g.sh[r / 4][r % 4] = (r < nRest) ? (float)vals[SLOT_FREST0 + r] : 0.0f;
         }

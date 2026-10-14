@@ -1,6 +1,6 @@
 # AGENTS.md
 
-WIP 3D rendering engine (OpenGL 4.5, C++) following the LearnOpenGL tutorials. All scene content is hardcoded — there is no interactive editing, no test suite, and no CI. Validation is manual: build and run the app, which requires a display and GPU.
+WIP 3D rendering engine (OpenGL 4.5, C++) following the LearnOpenGL tutorials. All scene content is hardcoded — there is no interactive editing, no test suite, and no CI. Validation is manual: build and run the app, which requires a display and GPU. Use the `--debug` flag as the closest thing to a test harness — smoke-test rendering changes headlessly (it requires no interaction) by inspecting the screenshots it writes to `screenshots/`.
 
 ## Build & run
 
@@ -10,7 +10,7 @@ make            # builds build/main from src/main.cpp + utils/glad.c
 make clean      # removes build/main only
 ```
 
-Run a specific scene via CLI, e.g. `./build/main boat` (positional scene name, resolved to `scenes/<name>.json`). Optional flags: `--culling N` (1–255, optional load-time splat opacity cull threshold in 1/255 units), `--orbit` enables the orbit camera mode, `--debug` enables the diagnostic screenshot mode (implies `--orbit`, empties `screenshots/` at startup, renders for 5 seconds saving one PNG screenshot per second into it, then exits).
+Run a specific scene via CLI, e.g. `./build/main boat` (positional scene name, resolved to `scenes/<name>.json`). Optional flags: `--culling N` (1–255, optional load-time splat opacity cull threshold in 1/255 units), `--orbit` enables the orbit camera mode. Prefer `./build/main <scene> --debug` when validating rendering changes — it runs unattended (implies `--orbit`, empties `screenshots/` at startup, renders for 5 seconds saving one PNG screenshot per second into it, then exits), so no manual interaction is needed.
 
 No lint, typecheck, format, or test commands exist.
 

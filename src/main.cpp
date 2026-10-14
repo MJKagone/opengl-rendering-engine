@@ -310,6 +310,9 @@ int main(int argc, char* argv[]) {
         Shader splatShaders("shaders/vertex/vs_splat.glsl", "shaders/fragment/fs_splat.glsl");
         Shader splatPbrShaders("shaders/vertex/vs_splat.glsl", "shaders/fragment/fs_splat_pbr.glsl");
 
+        quadShaders.use();
+        quadShaders.setInt("screenTexture", 0);
+
         // stbi_set_flip_vertically_on_load(true);
 
         // Load models and scene parameters from JSON
@@ -964,6 +967,7 @@ int main(int argc, char* argv[]) {
             quadShaders.use();
             glBindVertexArray(quadVAO);
             glDisable(GL_DEPTH_TEST);
+            glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, quadTexture);
             glDrawArrays(GL_TRIANGLES, 0, 6);
             glEnable(GL_DEPTH_TEST);
@@ -1394,14 +1398,14 @@ void generateSkybox(GLuint& cubeVBO, GLuint& cubeVAO, GLuint &equirectangularMap
     };
 
     er2cubemapShaders.use();
-    er2cubemapShaders.setInt("equirectangularMap", 0);
+    er2cubemapShaders.setInt("equirectangularMap", 23);
     er2cubemapShaders.setMat4("projection", captureProjection);
     glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(scene.skyboxRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
     rotation = glm::rotate(rotation, glm::radians(scene.skyboxRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
     rotation = glm::rotate(rotation, glm::radians(scene.skyboxRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
     er2cubemapShaders.setMat4("rotation", rotation);
 
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE23);
     glBindTexture(GL_TEXTURE_2D, equirectangularMap);
 
     glViewport(0, 0, SKYBOX_WIDTH, SKYBOX_HEIGHT);
@@ -1532,6 +1536,7 @@ void generatePrefilterMap(GLuint &prefilterMap, GLuint &iblFBO, Shader &prefilte
 void generateBRDFLUT(GLuint &brdfLUTTexture, GLuint &iblFBO, Shader &brdfShaders, GLuint &quadVAO) {
 
     glGenTextures(1, &brdfLUTTexture);
+    glActiveTexture(GL_TEXTURE22);
     glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

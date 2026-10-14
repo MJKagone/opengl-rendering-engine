@@ -10,7 +10,7 @@ struct Splat {
     vec4 scaleRough;  // xyz: scale, w: roughness
     vec4 colorMetal; // rgb: base color (base_color or f_dc), a: metallic
     vec4 normal;      // xyz: unit normal
-    vec4 sh[12];      // f_rest_0..44 (i = 3*coef + channel), f_dc in sh[11].yzw
+    vec4 sh[12];      // f_rest_0..44 (channel-major ply order), f_dc in sh[11].yzw
 };
 layout(std140, binding = 0) readonly buffer SplatBuffer {
     Splat splats[];
@@ -53,9 +53,11 @@ const float SH_C3_4 = -0.4570457994644658;
 const float SH_C3_5 = 1.445305721320277;
 const float SH_C3_6 = -0.5900435899266435;
 
-// f_rest coefficient k (1..15) of channel ch (0..2); ply order i = 3*coef + channel
+// f_rest coefficient k (1..15) of channel ch (0..2). The ply stores f_rest
+// channel-major (INRIA layout): f_rest_{c*15 + (k-1)}, 15 coefficients per
+// channel at max degree 3
 float shF(int k, int ch) {
-    int i = (k - 1) * 3 + ch;
+    int i = ch * 15 + (k - 1);
     vec4 v = splats[splatIndex].sh[i / 4];
     return v[i % 4];
 }
