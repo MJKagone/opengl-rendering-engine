@@ -1,0 +1,32 @@
+{
+  "environment": {
+    "skybox": "assets/skybox/urban.hdr",
+    "exposure": 1.0,
+    "globalAmbient": 0.08
+  },
+  "camera": {
+    "orbit": {
+      "radius": 38.0,
+      "height": 14.0,
+      "speed": 12.0
+    }
+  },
+  "entities": [
+    {
+      "name": "splat",
+      "modelPath": "assets/splats/pc_hq.ply",
+      "position": [-20.0, 0.0, 0.0],
+      "rotation": [-180.0, 0.0, 3.0],
+      "rotationVelocity": [0.0, 0.0, 0.0],
+      "scale": [2.0, 2.0, 2.0]
+    },
+    {
+      "name": "splat",
+      "modelPath": "assets/splats/pc_hq_neilf.ply",
+      "position": [20.0, 0.0, 0.0],
+      "rotation": [-180.0, 0.0, 3.0],
+      "rotationVelocity": [0.0, 0.0, 0.0],
+      "scale": [2.0, 2.0, 2.0]
+    }
+  ]
+}
