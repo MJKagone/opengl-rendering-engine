@@ -14,7 +14,7 @@
   "entities": [
     {
       "name": "splat",
-      "modelPath": "assets/splats/pc_hq.ply",
+      "modelPath": "assets/splats/pc_hq_default.ply",
       "position": [-20.0, 0.0, 0.0],
       "rotation": [-180.0, 0.0, 3.0],
       "rotationVelocity": [0.0, 0.0, 0.0],
