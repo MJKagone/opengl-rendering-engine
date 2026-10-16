@@ -16,7 +16,7 @@
       "name": "splat",
       "modelPath": "assets/splats/pc_hq_default.ply",
       "position": [-20.0, 0.0, 0.0],
-      "rotation": [-180.0, 0.0, 3.0],
+      "rotation": [-180.0, 0.0, 0.0],
       "rotationVelocity": [0.0, 0.0, 0.0],
       "scale": [2.0, 2.0, 2.0]
     },
@@ -24,7 +24,7 @@
       "name": "splat",
       "modelPath": "assets/splats/pc_hq_neilf.ply",
       "position": [20.0, 0.0, 0.0],
-      "rotation": [-180.0, 0.0, 3.0],
+      "rotation": [-180.0, 0.0, 0.0],
       "rotationVelocity": [0.0, 0.0, 0.0],
       "scale": [2.0, 2.0, 2.0]
     }
