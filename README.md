@@ -95,13 +95,10 @@ make
 Usage:
 
 ```bash
-./build/main <scene> [--orbit] [--debug] [--culling N] [-r WIDTHxHEIGHT]   # e.g. ./build/main example -r 1920x1080
+./build/main <scene> [--orbit] [--debug [N]] [--culling N] [-r WIDTHxHEIGHT]   # e.g. ./build/main example -r 1920x1080
 ```
 
-`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension) that contains the scene configuration. By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video.  `-r`/`--resolution` sets the window size at launch (default `1920x1080`); it also accepts the case-insensitive presets `hd` (1280x720), `fhd` (1920x1080), `qhd` (2560x1440) and `4k` (3840x2160). Invalid values abort with an error.
-```
-
-`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension) that contains the scene configuration. By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video. `--culling N` (N in 1-255) discards splats whose opacity is below `N/255` at load time; without the flag, all splats are loaded. `--debug` is an agent diagnostic mode that implies `--orbit`, clears the `screenshots/` folder at startup, renders for 5 seconds saving one screenshot per second into it, and then exits. `-r`/`--resolution` sets the window size at launch (default `1920x1080`); it also accepts the case-insensitive presets `hd` (1280x720), `fhd` (1920x1080), `qhd` (2560x1440) and `4k` (3840x2160). Invalid values abort with an error.
+`<scene>` is the name of a JSON file in `scenes/` (without the `.json` extension) that contains the scene configuration. By default the interactive fly-camera is used; with `--orbit` the camera constantly circles the scene origin as in the video. `--culling N` (N in 1-255) discards splats whose opacity is below `N/255` at load time; without the flag, all splats are loaded. `--debug` is an agent diagnostic mode that implies `--orbit`, creates `screenshots/DDMMYY-HHMMSS/` at startup, renders for N seconds saving one screenshot per second into it, and then exits; bare `--debug` uses N = 5, or pass a count explicitly, e.g. `--debug 8`. Screenshots are never cleared automatically — run `./clear_screenshots.sh` to clear the `screenshots/` folder. `-r`/`--resolution` sets the window size at launch (default `1920x1080`); it also accepts the case-insensitive presets `hd` (1280x720), `fhd` (1920x1080), `qhd` (2560x1440) and `4k` (3840x2160). Invalid values abort with an error.
 
 ## Assets
 
