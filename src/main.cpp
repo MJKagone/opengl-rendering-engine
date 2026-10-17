@@ -40,7 +40,7 @@ void generateBRDFLUT(GLuint &brdfLUTTexture, GLuint &captureFBO, Shader &brdfSha
 GLuint loadCubemap(const std::vector<std::string>& faces);
 GLuint loadEquirectangularMap(const char* path);
 glm::vec3 srgbToLinear(glm::vec3 srgb);
-void resetScreenshotDir();
+std::filesystem::path createScreenshotDir();
 void captureScreenshot(GLFWwindow* window, const std::string& filename);
 
 // Global variables
@@ -81,12 +81,13 @@ const float globalAmbient = 0.08f;
 const float globalLightScale = 1.0f;
 const float orthoScale = 2.0f;
 const float POINT_LIGHT_LINE_SCALE = 5.0f;
-const float DEBUG_DURATION = 5.0f;
+constexpr int DEBUG_DEFAULT_SCREENSHOTS = 5;
 const float DEBUG_INTERVAL = 1.0f;
-const int DEBUG_MAX_SCREENSHOTS = 5;
 
+int debugMaxScreenshots = 0;
 float debugTimer = 0.0f;
 int debugScreenshotsTaken = 0;
+std::filesystem::path screenshotDir;
 
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
@@ -146,9 +147,10 @@ int main(int argc, char* argv[]) {
         .default_value(false)
         .implicit_value(true);
     program.add_argument("--debug")
-        .help("Agent diagnostic mode: empties the screenshots folder, renders in orbit mode for 5 seconds and saves one screenshot per second")
-        .default_value(false)
-        .implicit_value(true);
+        .help("Agent diagnostic mode: renders in orbit mode for N seconds and saves one screenshot per second (default: 5)")
+        .nargs(argparse::nargs_pattern::optional)
+        .default_value(DEBUG_DEFAULT_SCREENSHOTS)
+        .scan<'i', int>();
     program.add_argument("--resolution", "-r")
         .help("Window size as WIDTHxHEIGHT, e.g. 1920x1080")
         .default_value("1920x1080");
@@ -160,7 +162,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     orbitMode = program.get<bool>("--orbit");
-    debugMode = program.get<bool>("--debug");
+    debugMode = program.is_used("--debug");
+    debugMaxScreenshots = program.get<int>("--debug");
+    if (debugMode && debugMaxScreenshots < 1) {
+        std::cerr << "Argparse error: argument --debug: value must be >= 1\n";
+        std::cerr << program;
+        return 1;
+    }
     if (debugMode) {orbitMode = true;}
     std::string sceneName = program.get<std::string>("input_scene");
     std::string scene_path = "scenes/" + sceneName + ".json";
@@ -201,8 +209,8 @@ int main(int argc, char* argv[]) {
 
     // Initialize GLFW
     if (debugMode) {
-        resetScreenshotDir();
-        std::cout << "Debug mode: screenshots folder emptied, saving one screenshot per second for " << DEBUG_DURATION << " seconds in orbit mode\n";
+        screenshotDir = createScreenshotDir();
+        std::cout << "Debug mode: saving one screenshot per second for " << debugMaxScreenshots << " seconds in orbit mode to '" << screenshotDir.string() << "'\n";
     }
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -831,12 +839,12 @@ int main(int argc, char* argv[]) {
             // Debug screenshot capture: one per second in orbit mode, then exit
             if (debugMode) {
                 debugTimer += deltaTime;
-                if (debugTimer >= DEBUG_INTERVAL && debugScreenshotsTaken < DEBUG_MAX_SCREENSHOTS) {
+                if (debugTimer >= DEBUG_INTERVAL && debugScreenshotsTaken < debugMaxScreenshots) {
                     debugScreenshotsTaken++;
-                    captureScreenshot(window, "screenshots/" + sceneName + "_debug_" + std::to_string(debugScreenshotsTaken) + ".png");
-                    std::cout << "Debug mode: saved screenshot " << debugScreenshotsTaken << "/" << DEBUG_MAX_SCREENSHOTS << "\n";
+                    captureScreenshot(window, (screenshotDir / (sceneName + "_debug_" + std::to_string(debugScreenshotsTaken) + ".png")).string());
+                    std::cout << "Debug mode: saved screenshot " << debugScreenshotsTaken << "/" << debugMaxScreenshots << "\n";
                     debugTimer = 0.0f;
-                    if (debugScreenshotsTaken >= DEBUG_MAX_SCREENSHOTS)
+                    if (debugScreenshotsTaken >= debugMaxScreenshots)
                         glfwSetWindowShouldClose(window, true);
                 }
             }
@@ -1458,23 +1466,15 @@ glm::vec3 srgbToLinear(glm::vec3 srgb) {
     return glm::vec3(pow(srgb.r, 2.2f), pow(srgb.g, 2.2f), pow(srgb.b, 2.2f));
 }
 
-void resetScreenshotDir() {
-    const std::filesystem::path dir("screenshots");
-    if (!std::filesystem::exists(dir)) {
-        std::filesystem::create_directories(dir);
-        return;
-    }
-    for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-        std::error_code ec;
-        if (entry.is_directory(ec)) {
-            std::filesystem::remove_all(entry.path(), ec);
-        } else {
-            std::filesystem::remove(entry.path(), ec);
-        }
-        if (ec) {
-            std::cerr << "Debug mode: failed to remove '" << entry.path().string() << "': " << ec.message() << '\n';
-        }
-    }
+std::filesystem::path createScreenshotDir() {
+    std::time_t now = std::time(nullptr);
+    std::tm localTm;
+    localtime_r(&now, &localTm);
+    char stamp[32];
+    std::strftime(stamp, sizeof(stamp), "%d%m%y-%H%M%S", &localTm);
+    std::filesystem::path dir = std::filesystem::path("screenshots") / stamp;
+    std::filesystem::create_directories(dir);
+    return dir;
 }
 
 // Writes the default framebuffer (tone-mapped back buffer) as a PNG via stb_image_write, rows flipped vertically
