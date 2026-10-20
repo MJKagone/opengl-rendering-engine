@@ -6,11 +6,13 @@ out vec3 vTexCoords;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 rotation = mat4(1.0); 
+uniform mat4 rotation = mat4(1.0);
 
 void main()
 {
-    vTexCoords = aPos;
-    vec4 pos = projection * view * rotation * vec4(aPos, 1.0);
+    // Rotate the sample direction so the environment appears rotated;
+    // cube geometry itself stays aligned with the view.
+    vTexCoords = (rotation * vec4(aPos, 0.0)).xyz;
+    vec4 pos = projection * view * vec4(aPos, 1.0);
     gl_Position = pos.xyww;
-}  
+}

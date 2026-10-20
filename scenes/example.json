@@ -4,6 +4,7 @@
     "exposure": 1.0,
     "globalAmbient": 0.08,
     "skyboxRotation": [0.0, 0.0, 0.0],
+    "skyboxRotationVelocity": [0.0, 0.0, 0.0],
     "specularIBLOnlyMirror": false
   },
   "camera": {

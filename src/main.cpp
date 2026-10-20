@@ -497,6 +497,13 @@ int main(int argc, char* argv[]) {
             lastFrame = currentFrame;
             scene.update(deltaTime);
 
+        // Environment rotation (skybox + IBL sampling), animated via skyboxRotationVelocity
+        glm::mat4 envRotation = glm::rotate(glm::mat4(1.0f), glm::radians(scene.skyboxRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        envRotation = glm::rotate(envRotation, glm::radians(scene.skyboxRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        envRotation = glm::rotate(envRotation, glm::radians(scene.skyboxRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        pbrShaders.use();
+        pbrShaders.setMat4("envRotation", envRotation);
+
             // Orbit camera mode
             if (orbitMode) {
                 cam.processOrbit(deltaTime, scene.orbit.radius, scene.orbit.height, scene.orbit.speed);
@@ -778,10 +785,7 @@ int main(int argc, char* argv[]) {
                 glm::mat4 skyboxView = glm::mat4(glm::mat3(view));
                 skyboxShaders.setMat4("view", skyboxView);
                 skyboxShaders.setMat4("projection", projection);
-                glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(scene.skyboxRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-                rotation = glm::rotate(rotation, glm::radians(scene.skyboxRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-                rotation = glm::rotate(rotation, glm::radians(scene.skyboxRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-                skyboxShaders.setMat4("rotation", rotation);
+                skyboxShaders.setMat4("rotation", envRotation);
                 skyboxShaders.setInt("skybox", 0);
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxCubemap);
@@ -1263,10 +1267,8 @@ void generateSkybox(GLuint& cubeVBO, GLuint& cubeVAO, GLuint &equirectangularMap
     er2cubemapShaders.use();
     er2cubemapShaders.setInt("equirectangularMap", 0);
     er2cubemapShaders.setMat4("projection", captureProjection);
-    glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(scene.skyboxRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotation = glm::rotate(rotation, glm::radians(scene.skyboxRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotation = glm::rotate(rotation, glm::radians(scene.skyboxRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-    er2cubemapShaders.setMat4("rotation", rotation);
+    // NOTE: skyboxRotation is NOT baked into the cubemap anymore — it is applied
+    // at sample time each frame so it can be animated (skyboxRotationVelocity).
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, equirectangularMap);
