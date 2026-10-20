@@ -79,6 +79,7 @@ public:
     float exposure = 1.0f;
     std::vector<std::string> skyboxPath;
     glm::vec3 skyboxRotation = glm::vec3(0.0f);
+    glm::vec3 skyboxRotationVelocity = glm::vec3(0.0f); // Degrees per second
     bool specularIBLOnlyMirror = false;
 
     std::unordered_map<std::string, std::unique_ptr<Model>> modelCache;
@@ -110,6 +111,7 @@ public:
             exposure = data["environment"].value("exposure", 1.0f);
             globalAmbient = data["environment"].value("globalAmbient", 0.08f);
             skyboxRotation = parseVec3(data["environment"].value("skyboxRotation", std::vector<float>{0.0f, 0.0f, 0.0f}));
+            skyboxRotationVelocity = parseVec3(data["environment"].value("skyboxRotationVelocity", std::vector<float>{0.0f, 0.0f, 0.0f}));
             specularIBLOnlyMirror = data["environment"].value("specularIBLOnlyMirror", false);
         }
 
@@ -197,5 +199,6 @@ public:
         for (auto& splatEntity : splatEntities) {
             splatEntity.transform.rotation += splatEntity.transform.rotationVelocity * deltaTime;
         }
+        skyboxRotation += skyboxRotationVelocity * deltaTime;
     }
 };

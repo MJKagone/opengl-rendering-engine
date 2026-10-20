@@ -36,6 +36,7 @@ uniform samplerCube shadowCubemaps[MAX_POINT_LIGHTS];
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
+uniform mat4 envRotation = mat4(1.0); // Current environment (skybox/IBL) rotation
 uniform bool specularIBLOnlyMirror;
 uniform float shininess;
 uniform float transparency = 1.0f;
@@ -292,13 +293,13 @@ void main()
 		kD *= 1.0 - metallic;
 
 		// Diffuse IBL
-		vec3 irradiance = texture(irradianceMap, normal).rgb;
+		vec3 irradiance = texture(irradianceMap, (envRotation * vec4(normal, 0.0)).xyz).rgb;
 		vec3 diffuse = irradiance * albedo;
 
 		// Specular IBL
 		const float MAX_REFLECTION_LOD = 4.0;
 		vec3 R = reflect(-viewDir, normal);
-		vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+		vec3 prefilteredColor = textureLod(prefilterMap, (envRotation * vec4(R, 0.0)).xyz, roughness * MAX_REFLECTION_LOD).rgb;
 		vec2 envBRDF = texture(brdfLUT, vec2(max(dot(normal, viewDir), 0.0), roughness)).rg;
 		vec3 specular = prefilteredColor * (F0 * envBRDF.x + envBRDF.y);
         if (specularIBLOnlyMirror && !(roughness < 0.01 && metallic > 0.99)) {
