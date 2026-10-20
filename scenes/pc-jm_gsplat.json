@@ -1,0 +1,24 @@
+{
+  "environment": {
+    "skybox": "assets/skybox/urban.hdr",
+    "exposure": 1.0,
+    "globalAmbient": 0.08
+  },
+  "camera": {
+    "orbit": {
+      "radius": 38.0,
+      "height": 14.0,
+      "speed": 12.0
+    }
+  },
+  "entities": [
+    {
+      "name": "splat",
+      "modelPath": "assets/splats/pc-jm_gsplat.ply",
+      "position": [0.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "rotationVelocity": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0]
+    }
+  ]
+}
