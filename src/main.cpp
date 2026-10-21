@@ -58,6 +58,8 @@ bool orbitMode = false;
 bool hasSplats = false;
 bool debugMode = false;
 
+Scene* scenePtr = nullptr; // set in main() so key_callback can reach toggles
+
 const int DIR_SHADOW_WIDTH = 2048;
 const int DIR_SHADOW_HEIGHT = 2048;
 const int POINT_SHADOW_WIDTH = 1024;
@@ -330,6 +332,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to load scene from JSON." << std::endl;
             return -1;
         }
+        scenePtr = &scene;
 
         if (scene.pointLights.size() > static_cast<size_t>(MAX_POINT_LIGHTS)) {
             std::cerr << "Scene has " << scene.pointLights.size() << " point lights; only "
@@ -585,6 +588,8 @@ int main(int argc, char* argv[]) {
         envRotation = glm::rotate(envRotation, glm::radians(scene.skyboxRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         pbrShaders.use();
         pbrShaders.setMat4("envRotation", envRotation);
+        splatPbrShaders.use();
+        splatPbrShaders.setMat4("envRotation", envRotation);
 
             // Orbit camera mode
             if (orbitMode) {
@@ -1074,6 +1079,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         else if (!hasSplats && shaderType < PBR) {shaderType = DEPTH;}
         else if (hasSplats && shaderType > SPLAT) {shaderType = SPLAT_PBR;}
         else if (hasSplats && shaderType < SPLAT_PBR) {shaderType = SPLAT;}
+    }
+    if (key == GLFW_KEY_R && action == GLFW_PRESS && scenePtr)
+    {
+        scenePtr->toggleSkyboxSpin();
     }
     if (key == GLFW_KEY_0 && action == GLFW_PRESS)
     {

@@ -82,6 +82,26 @@ public:
     glm::vec3 skyboxRotationVelocity = glm::vec3(0.0f); // Degrees per second
     bool specularIBLOnlyMirror = false;
 
+    // R-key toggle: hardcoded default spin that overrides the scene-configured
+    // skyboxRotationVelocity while active; releases restore the snapshot.
+    bool skyboxSpinOn = false;
+    glm::vec3 skyboxRotationSaved = glm::vec3(0.0f);
+    glm::vec3 skyboxRotationVelocitySaved = glm::vec3(0.0f);
+
+    void toggleSkyboxSpin() {
+        if (!skyboxSpinOn) {
+            // Snapshot the current alignment + scene-configured velocity
+            skyboxRotationSaved = skyboxRotation;
+            skyboxRotationVelocitySaved = skyboxRotationVelocity;
+            skyboxRotationVelocity = glm::vec3(0.0f, 25.0f, 0.0f);
+        } else {
+            // Restore original alignment and scene-configured velocity
+            skyboxRotation = skyboxRotationSaved;
+            skyboxRotationVelocity = skyboxRotationVelocitySaved;
+        }
+        skyboxSpinOn = !skyboxSpinOn;
+    }
+
     std::unordered_map<std::string, std::unique_ptr<Model>> modelCache;
     std::unordered_map<std::string, std::unique_ptr<GaussianCloud>> splatCache;
 
